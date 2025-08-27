@@ -14,13 +14,58 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  // Mock user data - in real app this would come from authentication context
-  const user = {
-    role: 'student', // or 'admin', 'faculty'
-    name: 'John Doe',
-    studentId: 'STU001',
-    email: 'john.doe@university.edu'
-  };
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+          window.location.href = '/auth?mode=login';
+          return;
+        }
+
+        const response = await fetch('http://localhost:8000/api/auth/profile/', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+        } else {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          window.location.href = '/auth?mode=login';
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        window.location.href = '/auth?mode=login';
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   const isAdmin = user.role === 'admin';
   const isStudent = user.role === 'student';
@@ -106,13 +151,13 @@ export default function DashboardPage() {
         >
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-2">
-            Welcome back, {user.name}! Here's what's happening on campus.
+            Welcome back, {user.first_name} {user.last_name}! Here's what's happening on campus.
           </p>
           <div className="mt-4 flex items-center space-x-4">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
               {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
             </span>
-            <span className="text-sm text-gray-500">{user.studentId}</span>
+            <span className="text-sm text-gray-500">{user.student_id || user.email}</span>
           </div>
         </motion.div>
       </div>

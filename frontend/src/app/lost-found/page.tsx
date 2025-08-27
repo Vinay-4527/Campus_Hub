@@ -1,169 +1,342 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Plus, Filter, MapPin, Clock, Tag } from 'lucide-react';
-import LoginPrompt from '@/components/auth/LoginPrompt';
+import { Search, Plus, Filter, MapPin, Clock, User, Tag, Eye, MessageSquare } from 'lucide-react';
+
+interface LostFoundItem {
+  id: number;
+  item_name: string;
+  description: string;
+  category: string;
+  location: string;
+  status: string;
+  contact_info: string;
+  reported_by: {
+    first_name: string;
+    last_name: string;
+  };
+  created_at: string;
+}
 
 export default function LostFoundPage() {
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [items, setItems] = useState<LostFoundItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newItem, setNewItem] = useState({
+    item_name: '',
+    description: '',
+    category: 'other',
+    location: '',
+    status: 'lost',
+    contact_info: ''
+  });
 
-  const lostItems = [
-    {
-      id: 1,
-      title: 'MacBook Pro Laptop',
-      description: 'Silver MacBook Pro with university sticker on the back',
-      location: 'Library - 2nd Floor',
-      date: '2024-08-24',
-      status: 'lost',
-      category: 'Electronics',
-      image: '/api/placeholder/300/200'
-    },
-    {
-      id: 2,
-      title: 'Student ID Card',
-      description: 'Student ID for John Smith, Computer Science Department',
-      location: 'Cafeteria',
-      date: '2024-08-23',
-      status: 'found',
-      category: 'Documents',
-      image: '/api/placeholder/300/200'
-    },
-    {
-      id: 3,
-      title: 'Water Bottle',
-      description: 'Blue Hydro Flask water bottle with university logo',
-      location: 'Gym',
-      date: '2024-08-22',
-      status: 'found',
-      category: 'Personal Items',
-      image: '/api/placeholder/300/200'
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const fetchItems = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('http://localhost:8000/api/lost-found/items/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setItems(data);
+      }
+    } catch (error) {
+      console.error('Error fetching items:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const handleAddItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('http://localhost:8000/api/lost-found/items/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newItem)
+      });
+      
+      if (response.ok) {
+        setShowAddModal(false);
+        setNewItem({
+          item_name: '',
+          description: '',
+          category: 'other',
+          location: '',
+          status: 'lost',
+          contact_info: ''
+        });
+        fetchItems();
+      }
+    } catch (error) {
+      console.error('Error adding item:', error);
+    }
+  };
+
+  const handleClaimItem = async (itemId: number) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`http://localhost:8000/api/lost-found/items/${itemId}/claim_item/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        fetchItems();
+      }
+    } catch (error) {
+      console.error('Error claiming item:', error);
+    }
+  };
+
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'lost': return 'bg-red-100 text-red-800';
+      case 'found': return 'bg-green-100 text-green-800';
+      case 'claimed': return 'bg-yellow-100 text-yellow-800';
+      case 'returned': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading items...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="mb-8"
-      >
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Lost & Found</h1>
-        <p className="text-gray-600">Help others find their belongings or report your lost items</p>
-      </motion.div>
+      {/* Header */}
+      <div className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <h1 className="text-3xl font-bold text-gray-900">Lost & Found</h1>
+          <p className="text-gray-600 mt-2">
+            Report lost items or help others find their belongings
+          </p>
+        </motion.div>
+      </div>
 
-      {/* Search and Filter Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-        className="mb-8"
-      >
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search for items..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
-                  <Filter className="w-4 h-4" />
-                  Filter
-                </button>
-                <button 
-                  onClick={() => setShowLoginPrompt(true)}
-                  className="flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-                >
-                  <Plus className="w-4 h-4" />
-                  Report Item
-                </button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* Search and Filter Bar */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex gap-2">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Status</option>
+              <option value="lost">Lost</option>
+              <option value="found">Found</option>
+              <option value="claimed">Claimed</option>
+              <option value="returned">Returned</option>
+            </select>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Report Item
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {lostItems.map((item, index) => (
-          <motion.div
-            key={item.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: index * 0.1 }}
-          >
-            <Card className="h-full hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-              <div className="h-48 bg-gradient-to-br from-blue-100 to-purple-100 rounded-t-lg flex items-center justify-center">
-                <div className="text-center">
-                  <Tag className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">Item Image</p>
+        {filteredItems.map((item) => (
+          <Card key={item.id} className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">{item.item_name}</CardTitle>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
+                  {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-4">{item.description}</p>
+              <div className="space-y-2 text-sm text-gray-500">
+                <div className="flex items-center">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  {item.location}
+                </div>
+                <div className="flex items-center">
+                  <Clock className="w-4 h-4 mr-2" />
+                  {new Date(item.created_at).toLocaleDateString()}
+                </div>
+                <div className="flex items-center">
+                  <User className="w-4 h-4 mr-2" />
+                  {item.reported_by.first_name} {item.reported_by.last_name}
+                </div>
+                <div className="flex items-center">
+                  <Tag className="w-4 h-4 mr-2" />
+                  {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                 </div>
               </div>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{item.title}</CardTitle>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    item.status === 'lost' 
-                      ? 'bg-red-100 text-red-800' 
-                      : 'bg-green-100 text-green-800'
-                  }`}>
-                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                  </span>
-                </div>
-                <p className="text-gray-600 text-sm">{item.description}</p>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-2 text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    <span>{item.location}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    <span>{item.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Tag className="w-4 h-4" />
-                    <span>{item.category}</span>
-                  </div>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <button 
-                    onClick={() => setShowLoginPrompt(true)}
-                    className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors duration-200"
+              <div className="flex gap-2 mt-4">
+                {item.status === 'found' && (
+                  <button
+                    onClick={() => handleClaimItem(item.id)}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                   >
-                    {item.status === 'lost' ? 'Claim Item' : 'Contact Owner'}
+                    Claim Item
                   </button>
-                  <button className="px-3 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50 transition-colors duration-200">
-                    Details
+                )}
+                {item.status === 'lost' && (
+                  <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Contact Owner
                   </button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                )}
+                {item.status === 'claimed' && (
+                  <button className="flex-1 px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed">
+                    Already Claimed
+                  </button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      {/* Login Prompt */}
-      <LoginPrompt
-        isOpen={showLoginPrompt}
-        onClose={() => setShowLoginPrompt(false)}
-        feature="Lost & Found"
-        benefits={[
-          "Report lost or found items",
-          "Contact item owners directly",
-          "Get notifications when items are found",
-          "Track your reported items",
-          "Help other students find their belongings"
-        ]}
-      />
+      {/* Add Item Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Report Item</h2>
+            <form onSubmit={handleAddItem} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Item Name</label>
+                <input
+                  type="text"
+                  value={newItem.item_name}
+                  onChange={(e) => setNewItem({...newItem, item_name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <textarea
+                  value={newItem.description}
+                  onChange={(e) => setNewItem({...newItem, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  rows={3}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Category</label>
+                <select
+                  value={newItem.category}
+                  onChange={(e) => setNewItem({...newItem, category: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="electronics">Electronics</option>
+                  <option value="books">Books</option>
+                  <option value="clothing">Clothing</option>
+                  <option value="accessories">Accessories</option>
+                  <option value="documents">Documents</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Location</label>
+                <input
+                  type="text"
+                  value={newItem.location}
+                  onChange={(e) => setNewItem({...newItem, location: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select
+                  value={newItem.status}
+                  onChange={(e) => setNewItem({...newItem, status: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="lost">Lost</option>
+                  <option value="found">Found</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Contact Info</label>
+                <input
+                  type="text"
+                  value={newItem.contact_info}
+                  onChange={(e) => setNewItem({...newItem, contact_info: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="Phone or email"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Report Item
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
