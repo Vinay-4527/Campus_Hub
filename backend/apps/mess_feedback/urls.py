@@ -1,9 +1,14 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import MessFeedbackViewSet
+
+router = DefaultRouter()
+router.register(r'feedbacks', MessFeedbackViewSet, basename='messfeedback')
 
 app_name = 'mess_feedback'
 
 urlpatterns = [
-    # TODO: Add mess feedback endpoints
+    path('', include(router.urls)),
 ]
 
 
