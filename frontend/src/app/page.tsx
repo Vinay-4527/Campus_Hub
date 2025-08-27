@@ -120,12 +120,12 @@ export default function HomePage() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
+            <Link href="/" className="flex items-center space-x-4 hover:opacity-80 transition-opacity cursor-pointer">
               <div className="w-12 h-12 bg-[#5bccf6] rounded-xl flex items-center justify-center shadow-lg">
                 <GraduationCap className="w-7 h-7 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-[#030e12]">Campus Hub</h1>
-            </div>
+            </Link>
             <div className="flex space-x-4">
               <Link
                 href="/auth?mode=login"
@@ -156,14 +156,16 @@ export default function HomePage() {
           <div className="absolute inset-0" />
           
           <div className="text-center max-w-5xl mx-auto relative z-10">
-                          <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="inline-flex items-center justify-center w-32 h-32 bg-[#5bccf6] rounded-full mb-10 shadow-2xl"
-              >
-                <GraduationCap className="w-16 h-16 text-white" />
-              </motion.div>
+                          <Link href="/">
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  className="inline-flex items-center justify-center w-32 h-32 bg-[#5bccf6] rounded-full mb-10 shadow-2xl hover:scale-105 transition-transform cursor-pointer"
+                >
+                  <GraduationCap className="w-16 h-16 text-white" />
+                </motion.div>
+              </Link>
             
             <motion.h1 
               initial={{ opacity: 0, y: 30 }}
