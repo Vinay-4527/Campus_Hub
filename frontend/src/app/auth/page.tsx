@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, User, Phone, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AuthPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialMode = searchParams?.get('mode');
   const [isLogin, setIsLogin] = useState(initialMode === 'signup' ? false : true);
 
@@ -32,11 +33,76 @@ export default function AuthPage() {
     phoneNumber: '',
     role: 'student'
   });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement authentication logic
-    console.log('Form submitted:', formData);
+    setError('');
+    setIsLoading(true);
+    try {
+      if (isLogin) {
+        const res = await fetch('http://localhost:8000/api/auth/login/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            username: formData.username,
+            password: formData.password,
+          }),
+        });
+        if (!res.ok) {
+          const errorData = await res.json();
+          // Handle field-specific errors from Django
+          if (typeof errorData === 'object' && !errorData.detail && !errorData.message) {
+            const fieldErrors = Object.entries(errorData)
+              .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors[0] : errors}`)
+              .join(', ');
+            throw new Error(fieldErrors || 'Invalid credentials');
+          }
+          throw new Error(errorData.detail || errorData.message || 'Invalid credentials');
+        }
+        const data = await res.json();
+        // store tokens simply in localStorage for now (can upgrade later)
+        if (data.tokens?.access) localStorage.setItem('accessToken', data.tokens.access);
+        if (data.tokens?.refresh) localStorage.setItem('refreshToken', data.tokens.refresh);
+        router.push('/dashboard');
+      } else {
+        const res = await fetch('http://localhost:8000/api/auth/register/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: formData.username,
+            email: formData.email,
+            password: formData.password,
+            password_confirm: formData.confirmPassword,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            role: formData.role,
+            student_id: formData.studentId || undefined,
+          }),
+        });
+        if (!res.ok) {
+          const errorData = await res.json();
+          // Handle field-specific errors from Django
+          if (typeof errorData === 'object' && !errorData.detail && !errorData.message) {
+            const fieldErrors = Object.entries(errorData)
+              .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors[0] : errors}`)
+              .join(', ');
+            throw new Error(fieldErrors || 'Registration failed');
+          }
+          throw new Error(errorData.detail || errorData.message || 'Registration failed');
+        }
+        const data = await res.json();
+        if (data.tokens?.access) localStorage.setItem('accessToken', data.tokens.access);
+        if (data.tokens?.refresh) localStorage.setItem('refreshToken', data.tokens.refresh);
+        router.push('/dashboard');
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -94,6 +160,17 @@ export default function AuthPage() {
             </button>
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+            >
+              {error}
+            </motion.div>
+          )}
+
           <AnimatePresence mode="wait">
             {isLogin ? (
               <motion.form
@@ -150,9 +227,10 @@ export default function AuthPage() {
 
                 <button
                   type="submit"
-                  className="w-full bg-[#5bccf6] text-[#030e12] py-3 px-4 rounded-lg font-medium hover:opacity-90 transform hover:scale-105 transition-all duration-200 shadow"
+                  disabled={isLoading}
+                  className="w-full bg-[#5bccf6] text-[#030e12] py-3 px-4 rounded-lg font-medium hover:opacity-90 transform hover:scale-105 transition-all duration-200 shadow disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Sign In
+                  {isLoading ? 'Signing In...' : 'Sign In'}
                 </button>
               </motion.form>
             ) : (
@@ -316,9 +394,10 @@ export default function AuthPage() {
 
                 <button
                   type="submit"
-                  className="w-full bg-[#5bccf6] text-[#030e12] py-3 px-4 rounded-lg font-medium hover:opacity-90 transform hover:scale-105 transition-all duration-200 shadow"
+                  disabled={isLoading}
+                  className="w-full bg-[#5bccf6] text-[#030e12] py-3 px-4 rounded-lg font-medium hover:opacity-90 transform hover:scale-105 transition-all duration-200 shadow disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create Account
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
                 </button>
               </motion.form>
             )}
