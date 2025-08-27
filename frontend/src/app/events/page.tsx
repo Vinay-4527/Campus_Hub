@@ -1,158 +1,493 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, MapPin, Users, Plus, Filter } from 'lucide-react';
+import { 
+  Calendar, 
+  MapPin, 
+  Users, 
+  Clock, 
+  Plus, 
+  Search, 
+  Filter,
+  User,
+  CheckCircle,
+  XCircle,
+  Edit,
+  Trash2,
+  Eye
+} from 'lucide-react';
+
+interface Event {
+  id: number;
+  title: string;
+  description: string;
+  event_type: string;
+  event_type_display: string;
+  location: string;
+  start_date: string;
+  end_date: string;
+  max_participants: number;
+  status: string;
+  status_display: string;
+  organizer: {
+    first_name: string;
+    last_name: string;
+  };
+  participants: any[];
+  registrations: any[];
+  is_full: boolean;
+  available_spots: number;
+  created_at: string;
+  updated_at: string;
+}
 
 export default function EventsPage() {
-  const events = [
-    {
-      id: 1,
-      title: 'Tech Workshop: Introduction to AI',
-      description: 'Learn the basics of artificial intelligence and machine learning in this hands-on workshop.',
-      date: '2024-09-15',
-      time: '14:00 - 16:00',
-      location: 'Computer Science Building - Room 101',
-      attendees: 45,
-      maxAttendees: 50,
-      category: 'Workshop',
-      image: '/api/placeholder/300/200'
-    },
-    {
-      id: 2,
-      title: 'Campus Cultural Festival',
-      description: 'Annual cultural festival celebrating diversity with food, music, and performances.',
-      date: '2024-09-20',
-      time: '18:00 - 22:00',
-      location: 'Main Campus Grounds',
-      attendees: 120,
-      maxAttendees: 200,
-      category: 'Festival',
-      image: '/api/placeholder/300/200'
-    },
-    {
-      id: 3,
-      title: 'Career Fair 2024',
-      description: 'Connect with top employers and explore career opportunities in various industries.',
-      date: '2024-09-25',
-      time: '10:00 - 16:00',
-      location: 'Student Center - Grand Hall',
-      attendees: 89,
-      maxAttendees: 150,
-      category: 'Career',
-      image: '/api/placeholder/300/200'
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    description: '',
+    event_type: 'other',
+    location: '',
+    start_date: '',
+    end_date: '',
+    max_participants: 50
+  });
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('http://localhost:8000/api/events/events/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEvents(data);
+      }
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('http://localhost:8000/api/events/events/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newEvent)
+      });
+      if (response.ok) {
+        setShowCreateModal(false);
+        setNewEvent({
+          title: '',
+          description: '',
+          event_type: 'other',
+          location: '',
+          start_date: '',
+          end_date: '',
+          max_participants: 50
+        });
+        fetchEvents();
+      } else {
+        const errorData = await response.json();
+        alert('Event creation failed: ' + JSON.stringify(errorData));
+      }
+    } catch (error) {
+      console.error('Error creating event:', error);
+      alert('Event creation failed');
+    }
+  };
+
+  const handleRegisterEvent = async (eventId: number) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`http://localhost:8000/api/events/events/${eventId}/register/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        fetchEvents();
+      } else {
+        const errorData = await response.json();
+        alert('Registration failed: ' + JSON.stringify(errorData));
+      }
+    } catch (error) {
+      console.error('Error registering for event:', error);
+      alert('Registration failed');
+    }
+  };
+
+  const handleUnregisterEvent = async (eventId: number) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`http://localhost:8000/api/events/events/${eventId}/unregister/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        fetchEvents();
+      } else {
+        const errorData = await response.json();
+        alert('Unregistration failed: ' + JSON.stringify(errorData));
+      }
+    } catch (error) {
+      console.error('Error unregistering from event:', error);
+      alert('Unregistration failed');
+    }
+  };
+
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         event.location.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'all' || event.event_type === filterType;
+    const matchesStatus = filterStatus === 'all' || event.status === filterStatus;
+    return matchesSearch && matchesType && matchesStatus;
+  });
+
+  const eventTypes = [
+    { value: 'all', label: 'All Types' },
+    { value: 'academic', label: 'Academic' },
+    { value: 'cultural', label: 'Cultural' },
+    { value: 'sports', label: 'Sports' },
+    { value: 'technical', label: 'Technical' },
+    { value: 'social', label: 'Social' },
+    { value: 'other', label: 'Other' }
   ];
+
+  const eventStatuses = [
+    { value: 'all', label: 'All Status' },
+    { value: 'upcoming', label: 'Upcoming' },
+    { value: 'ongoing', label: 'Ongoing' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' }
+  ];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'upcoming': return 'bg-blue-100 text-blue-800';
+      case 'ongoing': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-gray-100 text-gray-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getEventTypeColor = (type: string) => {
+    switch (type) {
+      case 'academic': return 'bg-purple-100 text-purple-800';
+      case 'cultural': return 'bg-pink-100 text-pink-800';
+      case 'sports': return 'bg-orange-100 text-orange-800';
+      case 'technical': return 'bg-blue-100 text-blue-800';
+      case 'social': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading events...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="mb-8"
-      >
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Events</h1>
-        <p className="text-gray-600">Discover and join exciting campus events</p>
-      </motion.div>
+      {/* Header */}
+      <div className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <h1 className="text-3xl font-bold text-gray-900">Events</h1>
+          <p className="text-gray-600 mt-2">
+            Discover and participate in campus events, workshops, and activities.
+          </p>
+        </motion.div>
+      </div>
 
-      {/* Search and Filter Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-        className="mb-8"
-      >
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  placeholder="Search events..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
-                  <Filter className="w-4 h-4" />
-                  Filter
-                </button>
-                <button className="flex items-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200">
-                  <Plus className="w-4 h-4" />
-                  Create Event
-                </button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* Search and Filter Bar */}
+      <div className="mb-6 flex flex-col lg:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <input
+            type="text"
+            placeholder="Search events..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            {eventTypes.map(type => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            {eventStatuses.map(status => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Create Event
+          </button>
+        </div>
+      </div>
 
       {/* Events Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {events.map((event, index) => (
+        {filteredEvents.map((event) => (
           <motion.div
             key={event.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: index * 0.1 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
           >
-            <Card className="h-full hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-              <div className="h-48 bg-gradient-to-br from-green-100 to-blue-100 rounded-t-lg flex items-center justify-center">
-                <div className="text-center">
-                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">Event Image</p>
-                </div>
-              </div>
-              <CardHeader className="pb-3">
+            <Card className="h-full hover:shadow-lg transition-shadow">
+              <CardHeader>
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{event.title}</CardTitle>
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {event.category}
-                  </span>
+                  <div className="flex-1">
+                    <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
+                      {event.title}
+                    </CardTitle>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getEventTypeColor(event.event_type)}`}>
+                        {event.event_type_display}
+                      </span>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
+                        {event.status_display}
+                      </span>
+                    </div>
+                  </div>
+                  <Calendar className="h-6 w-6 text-gray-400 flex-shrink-0" />
                 </div>
-                <p className="text-gray-600 text-sm">{event.description}</p>
               </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-2 text-sm text-gray-500">
+              <CardContent>
+                <p className="text-gray-600 text-sm line-clamp-3 mb-4">
+                  {event.description}
+                </p>
+                
+                <div className="space-y-2 text-sm text-gray-500 mb-4">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>{event.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    <span>{event.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
+                    <MapPin className="h-4 w-4" />
                     <span>{event.location}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    <span>{event.attendees}/{event.maxAttendees} attendees</span>
+                    <Calendar className="h-4 w-4" />
+                    <span>{new Date(event.start_date).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span>{new Date(event.start_date).toLocaleTimeString()} - {new Date(event.end_date).toLocaleTimeString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span>{event.available_spots} spots available</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <span>Organized by {event.organizer.first_name} {event.organizer.last_name}</span>
                   </div>
                 </div>
-                <div className="mt-4">
-                  <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                    <div 
-                      className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${(event.attendees / event.maxAttendees) * 100}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors duration-200">
+
+                <div className="flex gap-2">
+                  {event.is_full ? (
+                    <button className="flex-1 px-3 py-2 bg-gray-400 text-white text-sm rounded-md cursor-not-allowed">
+                      Event Full
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleRegisterEvent(event.id)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      <CheckCircle className="h-4 w-4" />
                       Register
                     </button>
-                    <button className="px-3 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50 transition-colors duration-200">
-                      Details
-                    </button>
-                  </div>
+                  )}
+                  <button className="flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 transition-colors">
+                    <Eye className="h-4 w-4" />
+                  </button>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         ))}
       </div>
+
+      {/* Create Event Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto"
+          >
+            <h3 className="text-lg font-semibold mb-4">Create New Event</h3>
+            <form onSubmit={handleCreateEvent} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Event Title
+                </label>
+                <input
+                  type="text"
+                  value={newEvent.title}
+                  onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={newEvent.description}
+                  onChange={(e) => setNewEvent({...newEvent, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Event Type
+                </label>
+                <select
+                  value={newEvent.event_type}
+                  onChange={(e) => setNewEvent({...newEvent, event_type: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {eventTypes.slice(1).map(type => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Location
+                </label>
+                <input
+                  type="text"
+                  value={newEvent.location}
+                  onChange={(e) => setNewEvent({...newEvent, location: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Start Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={newEvent.start_date}
+                    onChange={(e) => setNewEvent({...newEvent, start_date: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    End Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={newEvent.end_date}
+                    onChange={(e) => setNewEvent({...newEvent, end_date: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max Participants
+                </label>
+                <input
+                  type="number"
+                  value={newEvent.max_participants}
+                  onChange={(e) => setNewEvent({...newEvent, max_participants: parseInt(e.target.value)})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  required
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Create Event
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

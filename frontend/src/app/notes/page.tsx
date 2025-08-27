@@ -1,143 +1,266 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Download, Share2, Plus, Search, Filter, User, Calendar } from 'lucide-react';
+import { 
+  FileText, 
+  Download, 
+  Upload, 
+  Search, 
+  Filter, 
+  BookOpen, 
+  User, 
+  Calendar,
+  Eye,
+  Plus
+} from 'lucide-react';
+
+interface Note {
+  id: number;
+  title: string;
+  description: string;
+  subject: string;
+  subject_display: string;
+  file: string | null;
+  file_url: string | null;
+  uploaded_by: {
+    first_name: string;
+    last_name: string;
+  };
+  downloads: number;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export default function NotesPage() {
-  const notes = [
-    {
-      id: 1,
-      title: 'Introduction to Computer Science',
-      description: 'Comprehensive notes covering the fundamentals of computer science including algorithms, data structures, and programming concepts.',
-      subject: 'Computer Science',
-      author: 'Dr. Sarah Johnson',
-      date: '2024-08-20',
-      downloads: 156,
-      fileSize: '2.4 MB',
-      fileType: 'PDF'
-    },
-    {
-      id: 2,
-      title: 'Advanced Mathematics - Calculus II',
-      description: 'Detailed notes on integration techniques, applications of integrals, and series convergence.',
-      subject: 'Mathematics',
-      author: 'Prof. Michael Chen',
-      date: '2024-08-18',
-      downloads: 89,
-      fileSize: '1.8 MB',
-      fileType: 'PDF'
-    },
-    {
-      id: 3,
-      title: 'Business Ethics and Corporate Social Responsibility',
-      description: 'Case studies and theoretical frameworks for understanding ethical decision-making in business.',
-      subject: 'Business',
-      author: 'Dr. Emily Rodriguez',
-      date: '2024-08-15',
-      downloads: 203,
-      fileSize: '3.1 MB',
-      fileType: 'PDF'
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterSubject, setFilterSubject] = useState('all');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [newNote, setNewNote] = useState({
+    title: '',
+    description: '',
+    subject: 'other',
+    file_url: '',
+    is_public: true
+  });
+
+  useEffect(() => {
+    fetchNotes();
+  }, []);
+
+  const fetchNotes = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('http://localhost:8000/api/notes/notes/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotes(data);
+      }
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleUploadNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('http://localhost:8000/api/notes/notes/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newNote)
+      });
+      if (response.ok) {
+        setShowUploadModal(false);
+        setNewNote({
+          title: '',
+          description: '',
+          subject: 'other',
+          file_url: '',
+          is_public: true
+        });
+        fetchNotes();
+      } else {
+        const errorData = await response.json();
+        alert('Upload failed: ' + JSON.stringify(errorData));
+      }
+    } catch (error) {
+      console.error('Error uploading note:', error);
+      alert('Upload failed');
+    }
+  };
+
+  const handleDownload = async (noteId: number) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`http://localhost:8000/api/notes/notes/${noteId}/download/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.file_url) {
+          window.open(data.file_url, '_blank');
+        }
+      }
+    } catch (error) {
+      console.error('Error downloading note:', error);
+    }
+  };
+
+  const filteredNotes = notes.filter(note => {
+    const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         note.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSubject = filterSubject === 'all' || note.subject === filterSubject;
+    return matchesSearch && matchesSubject;
+  });
+
+  const subjects = [
+    { value: 'all', label: 'All Subjects' },
+    { value: 'computer_science', label: 'Computer Science' },
+    { value: 'mathematics', label: 'Mathematics' },
+    { value: 'physics', label: 'Physics' },
+    { value: 'chemistry', label: 'Chemistry' },
+    { value: 'biology', label: 'Biology' },
+    { value: 'engineering', label: 'Engineering' },
+    { value: 'business', label: 'Business' },
+    { value: 'arts', label: 'Arts' },
+    { value: 'literature', label: 'Literature' },
+    { value: 'history', label: 'History' },
+    { value: 'other', label: 'Other' }
   ];
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading notes...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="mb-8"
-      >
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Notes Sharing</h1>
-        <p className="text-gray-600">Access and share study materials with fellow students</p>
-      </motion.div>
+      {/* Header */}
+      <div className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <h1 className="text-3xl font-bold text-gray-900">Notes Sharing</h1>
+          <p className="text-gray-600 mt-2">
+            Share and discover academic notes with your campus community.
+          </p>
+        </motion.div>
+      </div>
 
-      {/* Search and Filter Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-        className="mb-8"
-      >
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search notes..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
-                  <Filter className="w-4 h-4" />
-                  Filter
-                </button>
-                <button className="flex items-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200">
-                  <Plus className="w-4 h-4" />
-                  Upload Notes
-                </button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* Search and Filter Bar */}
+      <div className="mb-6 flex flex-col lg:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <input
+            type="text"
+            placeholder="Search notes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={filterSubject}
+            onChange={(e) => setFilterSubject(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            {subjects.map(subject => (
+              <option key={subject.value} value={subject.value}>
+                {subject.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Upload Note
+          </button>
+        </div>
+      </div>
 
       {/* Notes Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {notes.map((note, index) => (
+        {filteredNotes.map((note) => (
           <motion.div
             key={note.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: index * 0.1 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
           >
-            <Card className="h-full hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-              <div className="h-48 bg-gradient-to-br from-purple-100 to-pink-100 rounded-t-lg flex items-center justify-center">
-                <div className="text-center">
-                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">Document Preview</p>
-                </div>
-              </div>
-              <CardHeader className="pb-3">
+            <Card className="h-full hover:shadow-lg transition-shadow">
+              <CardHeader>
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{note.title}</CardTitle>
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                    {note.fileType}
-                  </span>
+                  <div className="flex-1">
+                    <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
+                      {note.title}
+                    </CardTitle>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {note.subject_display}
+                      </span>
+                    </div>
+                  </div>
+                  <FileText className="h-6 w-6 text-gray-400 flex-shrink-0" />
                 </div>
-                <p className="text-gray-600 text-sm">{note.description}</p>
               </CardHeader>
-              <CardContent className="pt-0">
+              <CardContent>
+                <p className="text-gray-600 text-sm line-clamp-3 mb-4">
+                  {note.description}
+                </p>
+                
                 <div className="space-y-2 text-sm text-gray-500">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    <span>{note.author}</span>
+                    <User className="h-4 w-4" />
+                    <span>{note.uploaded_by.first_name} {note.uploaded_by.last_name}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>{note.date}</span>
+                    <Calendar className="h-4 w-4" />
+                    <span>{new Date(note.created_at).toLocaleDateString()}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    <span>{note.subject}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Download className="w-4 h-4" />
-                    <span>{note.downloads} downloads • {note.fileSize}</span>
+                    <Download className="h-4 w-4" />
+                    <span>{note.downloads} downloads</span>
                   </div>
                 </div>
+
                 <div className="mt-4 flex gap-2">
-                  <button className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 transition-colors duration-200 flex items-center justify-center gap-2">
-                    <Download className="w-4 h-4" />
+                  <button
+                    onClick={() => handleDownload(note.id)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
                     Download
                   </button>
-                  <button className="px-3 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2">
-                    <Share2 className="w-4 h-4" />
-                    Share
+                  <button className="flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 transition-colors">
+                    <Eye className="h-4 w-4" />
                   </button>
                 </div>
               </CardContent>
@@ -145,6 +268,105 @@ export default function NotesPage() {
           </motion.div>
         ))}
       </div>
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg p-6 w-full max-w-md mx-4"
+          >
+            <h3 className="text-lg font-semibold mb-4">Upload New Note</h3>
+            <form onSubmit={handleUploadNote} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={newNote.title}
+                  onChange={(e) => setNewNote({...newNote, title: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={newNote.description}
+                  onChange={(e) => setNewNote({...newNote, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Subject
+                </label>
+                <select
+                  value={newNote.subject}
+                  onChange={(e) => setNewNote({...newNote, subject: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {subjects.slice(1).map(subject => (
+                    <option key={subject.value} value={subject.value}>
+                      {subject.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  File URL (optional)
+                </label>
+                <input
+                  type="url"
+                  value={newNote.file_url}
+                  onChange={(e) => setNewNote({...newNote, file_url: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="https://drive.google.com/..."
+                />
+              </div>
+              
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="is_public"
+                  checked={newNote.is_public}
+                  onChange={(e) => setNewNote({...newNote, is_public: e.target.checked})}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="is_public" className="ml-2 block text-sm text-gray-900">
+                  Make this note public
+                </label>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Upload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
