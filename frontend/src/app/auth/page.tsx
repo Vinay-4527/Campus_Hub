@@ -20,6 +20,31 @@ export default function AuthPage() {
       setIsLogin(true);
     }
   }, [searchParams]);
+
+  // If already authenticated, redirect to dashboard to avoid seeing auth page after back navigation
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const mode = searchParams?.get('mode');
+    if (!token) return;
+    // Allow accessing signup even if logged in
+    if (mode === 'signup') return;
+    const verifyAndRedirect = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/auth/profile/', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          router.replace('/dashboard');
+        } else {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+        }
+      } catch (_) {
+        // noop
+      }
+    };
+    verifyAndRedirect();
+  }, [router, searchParams]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -45,7 +70,6 @@ export default function AuthPage() {
         const res = await fetch('http://localhost:8000/api/auth/login/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({
             username: formData.username,
             password: formData.password,
@@ -53,7 +77,6 @@ export default function AuthPage() {
         });
         if (!res.ok) {
           const errorData = await res.json();
-          // Handle field-specific errors from Django
           if (typeof errorData === 'object' && !errorData.detail && !errorData.message) {
             const fieldErrors = Object.entries(errorData)
               .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors[0] : errors}`)
@@ -63,10 +86,10 @@ export default function AuthPage() {
           throw new Error(errorData.detail || errorData.message || 'Invalid credentials');
         }
         const data = await res.json();
-        // store tokens simply in localStorage for now (can upgrade later)
         if (data.tokens?.access) localStorage.setItem('accessToken', data.tokens.access);
         if (data.tokens?.refresh) localStorage.setItem('refreshToken', data.tokens.refresh);
-        router.push('/dashboard');
+        router.replace('/dashboard');
+        setTimeout(() => { if (window.location.pathname !== '/dashboard') window.location.href = '/dashboard'; }, 100);
       } else {
         const res = await fetch('http://localhost:8000/api/auth/register/', {
           method: 'POST',
@@ -84,7 +107,6 @@ export default function AuthPage() {
         });
         if (!res.ok) {
           const errorData = await res.json();
-          // Handle field-specific errors from Django
           if (typeof errorData === 'object' && !errorData.detail && !errorData.message) {
             const fieldErrors = Object.entries(errorData)
               .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors[0] : errors}`)
@@ -96,9 +118,11 @@ export default function AuthPage() {
         const data = await res.json();
         if (data.tokens?.access) localStorage.setItem('accessToken', data.tokens.access);
         if (data.tokens?.refresh) localStorage.setItem('refreshToken', data.tokens.refresh);
-        router.push('/dashboard');
+        router.replace('/dashboard');
+        setTimeout(() => { if (window.location.pathname !== '/dashboard') window.location.href = '/dashboard'; }, 100);
       }
     } catch (err) {
+      console.error('Auth error:', err);
       setError((err as Error).message);
     } finally {
       setIsLoading(false);
@@ -122,10 +146,17 @@ export default function AuthPage() {
           transition={{ duration: 0.6 }}
           className="text-center mb-8"
         >
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-[#5bccf6] rounded-full mb-6 shadow-xl">
-            <GraduationCap className="w-10 h-10 text-white" />
+          <div
+            onClick={() => router.push('/')}
+            role="button"
+            aria-label="Go to home"
+            className="inline-block rounded-full cursor-pointer select-none"
+          >
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-[#5bccf6] rounded-full mb-3 shadow-xl hover:scale-105 transition-transform">
+              <GraduationCap className="w-10 h-10 text-white" />
+            </div>
           </div>
-          <h1 className="text-4xl font-bold text-[#030e12] mb-3">Campus Hub</h1>
+          <h1 className="text-4xl font-bold text-[#030e12]/90 mb-3">Campus Hub</h1>
           <p className="text-[#030e12]/80 text-lg">Your gateway to campus life</p>
         </motion.div>
 
@@ -139,21 +170,21 @@ export default function AuthPage() {
           {/* Toggle Buttons */}
           <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
             <button
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
+              onClick={() => { setIsLogin(true); router.replace('/auth?mode=login'); }}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-0 focus-visible:outline-none ${
                 isLogin
-                  ? 'bg-white text-[#030e12] shadow-sm ring-1 ring-[#5bccf6]'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-[#030e12] shadow-sm border border-[#5bccf6]'
+                  : 'text-gray-600 hover:text-gray-900 border border-transparent'
               }`}
             >
               Sign In
             </button>
             <button
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
+              onClick={() => { setIsLogin(false); router.replace('/auth?mode=signup'); }}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-0 focus-visible:outline-none ${
                 !isLogin
-                  ? 'bg-white text-[#030e12] shadow-sm ring-1 ring-[#5bccf6]'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-[#030e12] shadow-sm border border-[#5bccf6]'
+                  : 'text-gray-600 hover:text-gray-900 border border-transparent'
               }`}
             >
               Sign Up
@@ -183,7 +214,7 @@ export default function AuthPage() {
                 className="space-y-4"
               >
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#030e12]/90 mb-2">
                     Username or Email
                   </label>
                   <div className="relative">
@@ -193,7 +224,7 @@ export default function AuthPage() {
                       name="username"
                       value={formData.username}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                       placeholder="Enter your username or email"
                       required
                     />
@@ -201,7 +232,7 @@ export default function AuthPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#030e12]/90 mb-2">
                     Password
                   </label>
                   <div className="relative">
@@ -211,7 +242,7 @@ export default function AuthPage() {
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                       placeholder="Enter your password"
                       required
                     />
@@ -245,7 +276,7 @@ export default function AuthPage() {
               >
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-800 mb-2">
                       First Name
                     </label>
                     <div className="relative">
@@ -255,14 +286,14 @@ export default function AuthPage() {
                         name="firstName"
                         value={formData.firstName}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                         placeholder="First name"
                         required
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-800 mb-2">
                       Last Name
                     </label>
                     <input
@@ -270,7 +301,7 @@ export default function AuthPage() {
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                       placeholder="Last name"
                       required
                     />
@@ -278,7 +309,7 @@ export default function AuthPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#030e12]/90 mb-2">
                     Username
                   </label>
                   <input
@@ -286,14 +317,14 @@ export default function AuthPage() {
                     name="username"
                     value={formData.username}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                     placeholder="Choose a username"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#030e12]/90 mb-2">
                     Email
                   </label>
                   <div className="relative">
@@ -303,7 +334,7 @@ export default function AuthPage() {
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                       placeholder="Enter your email"
                       required
                     />
@@ -311,7 +342,7 @@ export default function AuthPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#030e12]/90 mb-2">
                     Student ID
                   </label>
                   <input
@@ -319,22 +350,20 @@ export default function AuthPage() {
                     name="studentId"
                     value={formData.studentId}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                     placeholder="Enter your student ID"
                   />
                 </div>
 
-                {/* Phone Number removed per request */}
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#030e12]/90 mb-2">
                     Role
                   </label>
                   <select
                     name="role"
                     value={formData.role}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                   >
                     <option value="student">Student</option>
                     <option value="faculty">Faculty</option>
@@ -343,7 +372,7 @@ export default function AuthPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#030e12]/90 mb-2">
                     Password
                   </label>
                   <div className="relative">
@@ -353,7 +382,7 @@ export default function AuthPage() {
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                       placeholder="Create a password"
                       required
                     />
@@ -368,7 +397,7 @@ export default function AuthPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#030e12]/90 mb-2">
                     Confirm Password
                   </label>
                   <div className="relative">
@@ -378,7 +407,7 @@ export default function AuthPage() {
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                       placeholder="Confirm your password"
                       required
                     />

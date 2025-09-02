@@ -46,6 +46,7 @@ interface Event {
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -61,8 +62,23 @@ export default function EventsPage() {
   });
 
   useEffect(() => {
+    fetchUserRole();
     fetchEvents();
   }, []);
+
+  const fetchUserRole = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+      const res = await fetch('http://localhost:8000/api/auth/profile/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserRole(data.role || null);
+      }
+    } catch (_) {}
+  };
 
   const fetchEvents = async () => {
     try {
@@ -75,7 +91,10 @@ export default function EventsPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setEvents(data);
+        const normalized = Array.isArray(data)
+          ? data
+          : (data && Array.isArray((data as any).results) ? (data as any).results : []);
+        setEvents(normalized as Event[]);
       }
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -162,7 +181,7 @@ export default function EventsPage() {
     }
   };
 
-  const filteredEvents = events.filter(event => {
+  const filteredEvents = (Array.isArray(events) ? events : []).filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.location.toLowerCase().includes(searchTerm.toLowerCase());
@@ -272,13 +291,15 @@ export default function EventsPage() {
               </option>
             ))}
           </select>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Create Event
-          </button>
+          {userRole && userRole !== 'student' && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Create Event
+            </button>
+          )}
         </div>
       </div>
 
@@ -363,7 +384,7 @@ export default function EventsPage() {
       </div>
 
       {/* Create Event Modal */}
-      {showCreateModal && (
+      {userRole && userRole !== 'student' && showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}

@@ -18,9 +18,11 @@ import {
   GraduationCap
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function HomePage() {
   const [isVisible, setIsVisible] = useState(false);
+  const router = useRouter();
   // Header should not move on scroll; no scroll-based transforms
 
   useEffect(() => {
@@ -112,6 +114,15 @@ export default function HomePage() {
     });
   };
 
+  const goToOrSignup = (path: string) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (token) {
+      router.push(path);
+    } else {
+      router.push('/auth?mode=signup');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fcde67]">
       {/* Header */}
@@ -148,8 +159,9 @@ export default function HomePage() {
         {/* Hero Section */}
         <motion.div 
           initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
+          whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
+          viewport={{ once: true, amount: 0.3 }}
           className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
         >
           {/* Minimal background */}
@@ -159,8 +171,9 @@ export default function HomePage() {
                           <Link href="/">
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
+                  whileInView={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.8, delay: 0.2 }}
+                  viewport={{ once: true, amount: 0.6 }}
                   className="inline-flex items-center justify-center w-32 h-32 bg-[#5bccf6] rounded-full mb-10 shadow-2xl hover:scale-105 transition-transform cursor-pointer"
                 >
                   <GraduationCap className="w-16 h-16 text-white" />
@@ -169,8 +182,9 @@ export default function HomePage() {
             
             <motion.h1 
               initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
+              whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
+              viewport={{ once: true, amount: 0.6 }}
               className="text-6xl font-bold text-[#030e12] mb-8"
             >
               Welcome to <span className="text-[#030e12]">Campus Hub</span>
@@ -178,8 +192,9 @@ export default function HomePage() {
             
             <motion.p 
               initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
+              whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
+              viewport={{ once: true, amount: 0.6 }}
               className="text-xl text-[#030e12]/80 mb-16 max-w-4xl mx-auto leading-relaxed"
             >
               Your one-stop platform for all campus utilities. Connect, share, and make campus life easier.
@@ -187,8 +202,9 @@ export default function HomePage() {
             
             <motion.button
               initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
+              whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.8 }}
+              viewport={{ once: true, amount: 0.6 }}
               onClick={scrollToFeatures}
               className="inline-flex items-center px-10 py-4 bg-[#5bccf6] text-[#030e12] font-bold text-lg rounded-2xl hover:opacity-90 transition-all duration-300 transform hover:scale-105 shadow"
             >
@@ -204,7 +220,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0.3 }}
             className="text-center mb-20"
           >
             <h2 className="text-4xl font-bold text-[#030e12] mb-6">
@@ -223,9 +239,10 @@ export default function HomePage() {
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
             >
-                          <Card className="h-full flex flex-col bg-white border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300">
+                          <Link href="/lost-found" className="block">
+              <Card className="h-full flex flex-col bg-white border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-gray-900 font-bold text-xl">
                   <div className="p-3 bg-[#5bccf6]/20 rounded-xl">
@@ -270,17 +287,18 @@ export default function HomePage() {
                        <p className="text-gray-600 mb-4">
                          Join Campus Hub to report lost items or contact owners
                        </p>
-                       <Link
-                         href="/auth?mode=signup"
+                       <button
+                         onClick={() => goToOrSignup('/lost-found')}
                          className="inline-flex items-center px-6 py-3 bg-[#5bccf6] text-[#030e12] rounded-xl hover:opacity-90 transition-all duration-300 font-medium shadow"
                        >
                          Sign Up to Participate
                          <ArrowRight className="ml-2 w-4 h-4" />
-                       </Link>
+                       </button>
                      </div>
                   </div>
                 </CardContent>
               </Card>
+              </Link>
             </motion.div>
 
             {/* Events */}
@@ -288,9 +306,10 @@ export default function HomePage() {
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
             >
-                          <Card className="h-full flex flex-col bg-white border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300">
+                          <Link href="/events" className="block">
+              <Card className="h-full flex flex-col bg-white border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-gray-900 font-bold text-xl">
                   <div className="p-3 bg-[#5bccf6]/20 rounded-xl">
@@ -341,17 +360,18 @@ export default function HomePage() {
                       <p className="text-gray-600 mb-4">
                         Join Campus Hub to register for events or create your own
                       </p>
-                      <Link
-                        href="/auth?mode=signup"
+                      <button
+                        onClick={() => goToOrSignup('/events')}
                         className="inline-flex items-center px-6 py-3 bg-[#5bccf6] text-[#030e12] rounded-xl hover:opacity-90 transition-all duration-300 font-medium shadow"
                       >
                         Sign Up to Participate
                         <ArrowRight className="ml-2 w-4 h-4" />
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+              </Link>
             </motion.div>
 
             {/* Notes */}
@@ -359,9 +379,10 @@ export default function HomePage() {
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
             >
-              <Card className="h-full flex flex-col bg-white border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300">
+              <Link href="/notes" className="block">
+              <Card className="h-full flex flex-col bg-white border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3 text-gray-900 font-bold text-xl">
                     <div className="p-3 bg-[#5bccf6]/20 rounded-xl">
@@ -395,17 +416,18 @@ export default function HomePage() {
                       <p className="text-gray-600 mb-4">
                         Join Campus Hub to upload and download study materials
                       </p>
-                      <Link
-                        href="/auth?mode=signup"
+                      <button
+                        onClick={() => goToOrSignup('/notes')}
                         className="inline-flex items-center px-6 py-3 bg-[#5bccf6] text-[#030e12] rounded-xl hover:opacity-90 transition-all duration-300 font-medium shadow"
                       >
                         Sign Up to Participate
                         <ArrowRight className="ml-2 w-4 h-4" />
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+              </Link>
             </motion.div>
 
             {/* Mess Feedback */}
@@ -413,9 +435,10 @@ export default function HomePage() {
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.5 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
             >
-              <Card className="h-full flex flex-col bg-white border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300">
+              <Link href="/mess-feedback" className="block">
+              <Card className="h-full flex flex-col bg-white border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3 text-gray-900 font-bold text-xl">
                     <div className="p-3 bg-[#5bccf6]/20 rounded-xl">
@@ -459,17 +482,18 @@ export default function HomePage() {
                       <p className="text-gray-600 mb-4">
                         Join Campus Hub to submit feedback and see dining ratings
                       </p>
-                      <Link
-                        href="/auth?mode=signup"
+                      <button
+                        onClick={() => goToOrSignup('/mess-feedback')}
                         className="inline-flex items-center px-6 py-3 bg-[#5bccf6] text-[#030e12] rounded-xl hover:opacity-90 transition-all duration-300 font-medium shadow"
                       >
                         Sign Up to Participate
                         <ArrowRight className="ml-2 w-4 h-4" />
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+              </Link>
             </motion.div>
           </div>
 
@@ -478,7 +502,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0.3 }}
             className="text-center mb-20"
           >
             <h2 className="text-3xl font-bold text-gray-900 mb-10">Platform Statistics</h2>
@@ -487,7 +511,7 @@ export default function HomePage() {
                 initial={{ scale: 0.8, opacity: 0 }}
                 whileInView={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.4 }}
                 className="text-center p-6 bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-all duration-300"
               >
                 <div className="text-5xl font-bold text-cyan-400 mb-3">500+</div>
@@ -497,7 +521,7 @@ export default function HomePage() {
                 initial={{ scale: 0.8, opacity: 0 }}
                 whileInView={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.4 }}
                 className="text-center p-6 bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-all duration-300"
               >
                 <div className="text-5xl font-bold text-pink-400 mb-3">50+</div>
@@ -507,7 +531,7 @@ export default function HomePage() {
                 initial={{ scale: 0.8, opacity: 0 }}
                 whileInView={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.4 }}
                 className="text-center p-6 bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-all duration-300"
               >
                 <div className="text-5xl font-bold text-yellow-400 mb-3">1000+</div>
@@ -521,7 +545,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0.3 }}
             className="text-center"
           >
             <Card className="bg-[#030e12] text-white border-0 shadow-2xl max-w-4xl mx-auto">

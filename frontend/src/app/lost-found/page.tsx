@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Plus, Filter, MapPin, Clock, User, Tag, Eye, MessageSquare } from 'lucide-react';
+import { Search, Plus, Filter, MapPin, Clock, User, Tag, Eye, MessageSquare, Copy } from 'lucide-react';
 
 interface LostFoundItem {
   id: number;
@@ -16,6 +16,9 @@ interface LostFoundItem {
   reported_by: {
     first_name: string;
     last_name: string;
+    id?: number;
+    email?: string;
+    phone_number?: string;
   };
   created_at: string;
 }
@@ -34,9 +37,18 @@ export default function LostFoundPage() {
     status: 'lost',
     contact_info: ''
   });
+  const [contactModalItem, setContactModalItem] = useState<LostFoundItem | null>(null);
+  const [claimModalItem, setClaimModalItem] = useState<LostFoundItem | null>(null);
+  const [claimForm, setClaimForm] = useState({
+    details: '',
+    contact: '',
+    proofFile: null as File | null,
+  });
+  const [currentUser, setCurrentUser] = useState<{ id: number; email: string } | null>(null);
 
   useEffect(() => {
     fetchItems();
+    fetchCurrentUser();
   }, []);
 
   const fetchItems = async () => {
@@ -51,13 +63,30 @@ export default function LostFoundPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setItems(data);
+        const normalized = Array.isArray(data)
+          ? data
+          : (data && Array.isArray((data as any).results) ? (data as any).results : []);
+        setItems(normalized as LostFoundItem[]);
       }
     } catch (error) {
       console.error('Error fetching items:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+      const res = await fetch('http://localhost:8000/api/auth/profile/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUser({ id: data.id, email: data.email });
+      }
+    } catch (_) {}
   };
 
   const handleAddItem = async (e: React.FormEvent) => {
@@ -98,15 +127,67 @@ export default function LostFoundPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          details: claimForm.details,
+          contact: claimForm.contact,
+        })
       });
       
       if (response.ok) {
         fetchItems();
+        setClaimModalItem(null);
+        setClaimForm({ details: '', contact: currentUser?.email || '', proofFile: null });
       }
     } catch (error) {
       console.error('Error claiming item:', error);
     }
+  };
+
+  const openContactModal = (item: LostFoundItem) => {
+    setContactModalItem(item);
+  };
+
+  const closeContactModal = () => {
+    setContactModalItem(null);
+  };
+
+  const copyContactInfoToClipboard = async (contactInfo: string) => {
+    try {
+      await navigator.clipboard.writeText(contactInfo);
+      alert('Contact info copied to clipboard');
+    } catch (error) {
+      console.error('Failed to copy contact info:', error);
+    }
+  };
+
+  const buildSmartContactLink = (contactInfo: string): { href: string; label: string } | null => {
+    const trimmed = contactInfo.trim();
+    if (!trimmed) return null;
+    if (trimmed.includes('@')) {
+      // Add a basic subject/body and cc the logged-in user
+      const subject = encodeURIComponent('Inquiry about your lost item from Campus Hub');
+      const body = encodeURIComponent('Hi, I think I might have found your item.');
+      const cc = currentUser?.email ? `&cc=${encodeURIComponent(currentUser.email)}` : '';
+      return { href: `mailto:${trimmed}?subject=${subject}&body=${body}${cc}` , label: 'Send Email' };
+    }
+    const digits = trimmed.replace(/[^0-9+]/g, '');
+    if (digits.length >= 8) {
+      return { href: `tel:${digits}`, label: 'Call' };
+    }
+    return null;
+  };
+
+  const isCollegeEmail = (email: string | undefined | null): boolean => {
+    if (!email) return false;
+    const domain = process.env.NEXT_PUBLIC_COLLEGE_EMAIL_DOMAIN || 'edu';
+    return email.toLowerCase().endsWith(domain.toLowerCase());
+  };
+
+  const extractPhoneFromString = (text: string | undefined | null): string | null => {
+    if (!text) return null;
+    const digits = text.replace(/[^0-9+]/g, '');
+    return digits.length >= 8 ? digits : null;
   };
 
   const filteredItems = items.filter(item => {
@@ -223,15 +304,27 @@ export default function LostFoundPage() {
               </div>
               <div className="flex gap-2 mt-4">
                 {item.status === 'found' && (
-                  <button
-                    onClick={() => handleClaimItem(item.id)}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                  >
-                    Claim Item
-                  </button>
+                  currentUser && item.reported_by?.id === currentUser.id ? (
+                    <span className="flex-1 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-center">
+                      Posted by You
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setClaimModalItem(item);
+                        setClaimForm({ details: '', contact: currentUser?.email || '', proofFile: null });
+                      }}
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Claim This Item
+                    </button>
+                  )
                 )}
                 {item.status === 'lost' && (
-                  <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <button
+                    onClick={() => openContactModal(item)}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
                     Contact Owner
                   </button>
                 )}
@@ -332,6 +425,130 @@ export default function LostFoundPage() {
                 >
                   Report Item
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Owner Modal */}
+      {contactModalItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Contact Owner</h2>
+            <div className="space-y-3 text-sm text-gray-700">
+              <div>
+                <p className="text-gray-500">Item</p>
+                <p className="font-medium text-gray-900">{contactModalItem.item_name}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Owner</p>
+                <p className="font-medium text-gray-900">{contactModalItem.reported_by.first_name} {contactModalItem.reported_by.last_name}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Email</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-900 break-all">{contactModalItem.reported_by.email || 'Not provided'}</p>
+                  {contactModalItem.reported_by.email && (
+                    <button
+                      onClick={() => copyContactInfoToClipboard(contactModalItem.reported_by.email!)}
+                      className="px-2 py-1 text-xs border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 inline-flex items-center gap-1"
+                    >
+                      <Copy className="w-3 h-3" /> Copy
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-gray-500">Phone</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-900 break-all">{contactModalItem.reported_by.phone_number || extractPhoneFromString(contactModalItem.contact_info) || 'Not provided'}</p>
+                  {(contactModalItem.reported_by.phone_number || extractPhoneFromString(contactModalItem.contact_info)) && (
+                    <button
+                      onClick={() => copyContactInfoToClipboard((contactModalItem.reported_by.phone_number || extractPhoneFromString(contactModalItem.contact_info))!)}
+                      className="px-2 py-1 text-xs border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 inline-flex items-center gap-1"
+                    >
+                      <Copy className="w-3 h-3" /> Copy
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={closeContactModal}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+              >
+                Close
+              </button>
+              {contactModalItem.contact_info && buildSmartContactLink(contactModalItem.contact_info) && (
+                (() => {
+                  const link = buildSmartContactLink(contactModalItem.contact_info)!;
+                  const emailMode = link.href.startsWith('mailto:');
+                  const allowed = emailMode ? isCollegeEmail(currentUser?.email) : true;
+                  return (
+                    <a
+                      href={allowed ? link.href : undefined}
+                      onClick={(e) => { if (!allowed) { e.preventDefault(); alert('Please use your college email to contact the owner.'); } }}
+                      className={`flex-1 px-4 py-2 text-white text-center rounded-lg ${allowed ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300 cursor-not-allowed'}`}
+                    >
+                      {emailMode ? (allowed ? 'Send Email (College ID)' : 'Email (College ID required)') : link.label}
+                    </a>
+                  );
+                })()
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Claim Request Modal */}
+      {claimModalItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Claim This Item</h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleClaimItem(claimModalItem.id);
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-1">Describe identifying details</label>
+                <textarea
+                  value={claimForm.details}
+                  onChange={(e) => setClaimForm({ ...claimForm, details: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  rows={3}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Your contact (college email preferred)</label>
+                <input
+                  type="email"
+                  value={claimForm.contact}
+                  onChange={(e) => setClaimForm({ ...claimForm, contact: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  required
+                />
+                {claimForm.contact && !isCollegeEmail(claimForm.contact) && (
+                  <p className="text-xs text-yellow-600 mt-1">Tip: use your college email for faster approval.</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Proof (optional)</label>
+                <input
+                  type="file"
+                  onChange={(e) => setClaimForm({ ...claimForm, proofFile: e.target.files?.[0] || null })}
+                  className="w-full"
+                  accept="image/*,application/pdf"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={() => setClaimModalItem(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">Cancel</button>
+                <button type="submit" className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Submit Claim</button>
               </div>
             </form>
           </div>

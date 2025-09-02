@@ -1,7 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from .models import User
+from .models import User, AdminApprovalRequest
+from django.utils.crypto import get_random_string
+from django.conf import settings
+from django.core.mail import send_mail
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """
@@ -10,12 +13,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
     
+    # Extra fields used when requesting admin role
+    department = serializers.CharField(required=False, allow_blank=True)
+    approver_email = serializers.EmailField(required=False, allow_blank=True)
+
     class Meta:
         model = User
         fields = [
             'username', 'email', 'password', 'password_confirm',
             'first_name', 'last_name', 'role', 'student_id',
-            'phone_number'
+            'phone_number', 'department', 'approver_email'
         ]
         extra_kwargs = {
             'first_name': {'required': True},
@@ -29,8 +36,36 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return attrs
     
     def create(self, validated_data):
-        validated_data.pop('password_confirm')
+        password = validated_data.pop('password_confirm')
+        department = validated_data.pop('department', None)
+        approver_email = validated_data.pop('approver_email', None)
+        requested_role = validated_data.get('role', 'student')
+
         user = User.objects.create_user(**validated_data)
+        user.set_password(password)
+        # If user requested admin, set role to student until approved and create approval request
+        if requested_role == 'admin':
+            user.role = 'student'
+            user.save(update_fields=['password', 'role'])
+            if department and approver_email:
+                token = get_random_string(48)
+                AdminApprovalRequest.objects.create(
+                    user=user,
+                    department=department,
+                    approver_email=approver_email,
+                    token=token,
+                )
+                approval_link = f"{settings.FRONTEND_BASE_URL if hasattr(settings, 'FRONTEND_BASE_URL') else 'http://localhost:3000'}/auth/admin-approve?token={token}"
+                send_mail(
+                    subject='Campus Hub - Admin Approval Request',
+                    message=f"Please approve admin access for {user.get_full_name()} ({user.email}) in {department}.\nApprove: {approval_link}",
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@campushub.local'),
+                    recipient_list=[approver_email],
+                    fail_silently=True,
+                )
+        else:
+            user.save(update_fields=['password'])
+
         return user
 
 class UserLoginSerializer(serializers.Serializer):

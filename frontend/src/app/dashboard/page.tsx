@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -11,12 +12,34 @@ import {
   TrendingUp,
   Users,
   Clock,
-  CheckCircle
+  CheckCircle,
+  MapPin
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [eventsPreview, setEventsPreview] = useState<any[]>([]);
+  const router = useRouter();
+
+  async function fetchEventsPreview() {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('http://localhost:8000/api/events/events/?ordering=start_date', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const normalized = Array.isArray(data)
+          ? data
+          : (data && Array.isArray((data as any).results) ? (data as any).results : []);
+        setEventsPreview((normalized as any[]).slice(0, 3));
+      }
+    } catch (_) {}
+  }
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -51,6 +74,7 @@ export default function DashboardPage() {
     };
 
     fetchUserProfile();
+    fetchEventsPreview();
   }, []);
 
   if (loading) {
@@ -107,6 +131,8 @@ export default function DashboardPage() {
     }
   ];
 
+  // removed duplicate const version; using hoisted function above
+
   const recentActivities = [
     {
       id: 1,
@@ -142,24 +168,30 @@ export default function DashboardPage() {
     }
   ];
 
+  // (moved theme apply/useEffect above to keep consistent hooks order)
+
   return (
     <div className="p-6 lg:p-8">
-      <div className="mb-8">
+      <div className="mb-8 sticky top-0 z-10 bg-gray-50 py-3 -mx-6 lg:-mx-8 px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
+          className="flex items-start justify-between"
         >
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-2">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600 mt-2">
             Welcome back, {user.first_name} {user.last_name}! Here's what's happening on campus.
-          </p>
-          <div className="mt-4 flex items-center space-x-4">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+            </p>
+            <div className="mt-4 flex items-center space-x-4">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
               {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-            </span>
-            <span className="text-sm text-gray-500">{user.student_id || user.email}</span>
+              </span>
+              <span className="text-sm text-gray-500">{user.student_id || user.email}</span>
+            </div>
           </div>
+          
         </motion.div>
       </div>
 
@@ -183,6 +215,51 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Upcoming Events (preview) */}
+      <div className="mb-8">
+        <Card>
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" /> Upcoming Events
+            </CardTitle>
+            <button
+              onClick={() => window.location.href = '/dashboard/events'}
+              className="text-sm text-blue-600 hover:text-blue-700"
+            >
+              View all
+            </button>
+          </CardHeader>
+          <CardContent>
+            {eventsPreview.length === 0 ? (
+              <p className="text-sm text-gray-500">No upcoming events.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {eventsPreview.map((ev: any) => (
+                  <div key={ev.id} className="border rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <h4 className="font-medium text-gray-900 line-clamp-1">{ev.title}</h4>
+                    <p className="text-sm text-gray-600 line-clamp-2 mt-1">{ev.description}</p>
+                    <div className="mt-3 space-y-1 text-sm text-gray-500">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>{new Date(ev.start_date).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>{new Date(ev.start_date).toLocaleTimeString()} - {new Date(ev.end_date).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        <span className="truncate">{ev.location}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Activities */}
@@ -233,13 +310,13 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {isStudent && (
                 <>
-                  <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transform hover:scale-105 transition-all duration-200">
+                  <button onClick={() => router.push('/dashboard/lost-found')} className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transform hover:scale-105 transition-all duration-200">
                     Report Lost Item
                   </button>
-                  <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transform hover:scale-105 transition-all duration-200">
+                  <button onClick={() => router.push('/dashboard/notes')} className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transform hover:scale-105 transition-all duration-200">
                     Share Notes
                   </button>
-                  <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 transform hover:scale-105 transition-all duration-200">
+                  <button onClick={() => router.push('/dashboard/mess-feedback')} className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 transform hover:scale-105 transition-all duration-200">
                     Submit Feedback
                   </button>
                 </>

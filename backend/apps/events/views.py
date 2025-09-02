@@ -28,6 +28,17 @@ class EventViewSet(viewsets.ModelViewSet):
             return EventUpdateSerializer
         return EventSerializer
 
+    def create(self, request, *args, **kwargs):
+        user = request.user
+        # Students cannot create events
+        try:
+            user_role = getattr(user, 'role', None)
+        except Exception:  # pragma: no cover
+            user_role = None
+        if user_role == 'student':
+            return Response({'detail': 'Students are not allowed to create events.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         serializer.save(organizer=self.request.user)
 

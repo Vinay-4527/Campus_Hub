@@ -5,7 +5,8 @@ from .views import (
     UserLoginView,
     user_logout_view,
     UserProfileView,
-    user_profile_view
+    user_profile_view,
+    ChangePasswordView
 )
 
 app_name = 'authentication'
@@ -17,8 +18,8 @@ urlpatterns = [
     path('login/', UserLoginView.as_view(), name='login'),
     path('logout/', user_logout_view, name='logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('change-password/', ChangePasswordView.as_view(), name='change_password'),
     
-    # Profile endpoints
-    path('profile/', user_profile_view, name='profile'),
-    path('profile/update/', UserProfileView.as_view(), name='profile_update'),
+    # Profile endpoints (use APIView for JWT auth)
+    path('profile/', UserProfileView.as_view(), name='profile'),
 ]

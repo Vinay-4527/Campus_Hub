@@ -63,7 +63,10 @@ export default function NotesPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setNotes(data);
+        const normalized = Array.isArray(data)
+          ? data
+          : (data && Array.isArray((data as any).results) ? (data as any).results : []);
+        setNotes(normalized as Note[]);
       }
     } catch (error) {
       console.error('Error fetching notes:', error);
@@ -123,7 +126,7 @@ export default function NotesPage() {
     }
   };
 
-  const filteredNotes = notes.filter(note => {
+  const filteredNotes = (Array.isArray(notes) ? notes : []).filter(note => {
     const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          note.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSubject = filterSubject === 'all' || note.subject === filterSubject;

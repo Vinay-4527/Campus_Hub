@@ -55,7 +55,10 @@ export default function MessFeedbackPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setFeedbacks(data);
+        const normalized = Array.isArray(data)
+          ? data
+          : (data && Array.isArray((data as any).results) ? (data as any).results : []);
+        setFeedbacks(normalized as MessFeedback[]);
       }
     } catch (error) {
       console.error('Error fetching feedbacks:', error);
@@ -76,7 +79,10 @@ export default function MessFeedbackPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setStats(data);
+        const normalized = Array.isArray(data)
+          ? data
+          : (data && Array.isArray((data as any).results) ? (data as any).results : []);
+        setStats(normalized as FeedbackStats[]);
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
