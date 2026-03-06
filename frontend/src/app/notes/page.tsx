@@ -12,8 +12,9 @@ import {
   BookOpen, 
   User, 
   Calendar,
+  Plus,
   Eye,
-  Plus
+  X
 } from 'lucide-react';
 
 interface Note {
@@ -40,11 +41,13 @@ export default function NotesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState('all');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [previewNote, setPreviewNote] = useState<Note | null>(null);
   const [newNote, setNewNote] = useState({
     title: '',
     description: '',
     subject: 'other',
     file_url: '',
+    file: null as File | null,
     is_public: true
   });
 
@@ -79,13 +82,25 @@ export default function NotesPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('accessToken');
+      const formData = new FormData();
+      formData.append('title', newNote.title);
+      formData.append('description', newNote.description);
+      formData.append('subject', newNote.subject);
+      formData.append('is_public', newNote.is_public.toString());
+      
+      if (newNote.file) {
+        formData.append('file', newNote.file);
+      }
+      if (newNote.file_url) {
+        formData.append('file_url', newNote.file_url);
+      }
+
       const response = await fetch('http://localhost:8000/api/notes/notes/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newNote)
+        body: formData
       });
       if (response.ok) {
         setShowUploadModal(false);
@@ -94,6 +109,7 @@ export default function NotesPage() {
           description: '',
           subject: 'other',
           file_url: '',
+          file: null,
           is_public: true
         });
         fetchNotes();
@@ -116,14 +132,53 @@ export default function NotesPage() {
         }
       });
       if (response.ok) {
-        const data = await response.json();
-        if (data.file_url) {
-          window.open(data.file_url, '_blank');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            if (data.file_url) window.open(data.file_url, '_blank');
+        } else {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            // Try to get filename from content-disposition
+            const contentDisposition = response.headers.get('content-disposition');
+            let filename = 'download';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (filenameMatch) filename = filenameMatch[1];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
         }
       }
     } catch (error) {
       console.error('Error downloading note:', error);
     }
+  };
+
+  const handlePreview = (note: Note) => {
+    if (!note.file) {
+      return;
+    }
+    setPreviewNote(note);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewNote(null);
+  };
+
+  const getFileUrl = (note: Note): string | null => {
+    if (!note.file) {
+      return null;
+    }
+    if (note.file.startsWith('http://') || note.file.startsWith('https://')) {
+      return note.file;
+    }
+    return `http://localhost:8000${note.file}`;
   };
 
   const filteredNotes = (Array.isArray(notes) ? notes : []).filter(note => {
@@ -148,9 +203,25 @@ export default function NotesPage() {
     { value: 'other', label: 'Other' }
   ];
 
+  const getSubjectColor = (subject: string) => {
+    switch (subject) {
+      case 'computer_science': return 'bg-blue-100 text-blue-800';
+      case 'mathematics': return 'bg-purple-100 text-purple-800';
+      case 'physics': return 'bg-indigo-100 text-indigo-800';
+      case 'chemistry': return 'bg-pink-100 text-pink-800';
+      case 'biology': return 'bg-green-100 text-green-800';
+      case 'engineering': return 'bg-orange-100 text-orange-800';
+      case 'business': return 'bg-yellow-100 text-yellow-800';
+      case 'arts': return 'bg-red-100 text-red-800';
+      case 'literature': return 'bg-teal-100 text-teal-800';
+      case 'history': return 'bg-amber-100 text-amber-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (loading) {
     return (
-      <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading notes...</p>
@@ -160,7 +231,7 @@ export default function NotesPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8">
         <motion.div
@@ -187,11 +258,11 @@ export default function NotesPage() {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
           <select
             value={filterSubject}
             onChange={(e) => setFilterSubject(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             {subjects.map(subject => (
               <option key={subject.value} value={subject.value}>
@@ -201,7 +272,7 @@ export default function NotesPage() {
           </select>
           <button
             onClick={() => setShowUploadModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="h-4 w-4" />
             Upload Note
@@ -218,53 +289,58 @@ export default function NotesPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
           >
-            <Card className="h-full hover:shadow-lg transition-shadow">
-              <CardHeader>
+            <Card className="h-full hover:shadow-lg transition-all duration-300 border-none bg-white/50 backdrop-blur-sm flex flex-col">
+              <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium mb-3 ${getSubjectColor(note.subject)}`}>
+                      {note.subject_display}
+                    </span>
+                    <CardTitle className="text-lg font-bold text-gray-900 line-clamp-2 leading-tight">
                       {note.title}
                     </CardTitle>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {note.subject_display}
-                      </span>
-                    </div>
                   </div>
-                  <FileText className="h-6 w-6 text-gray-400 flex-shrink-0" />
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 text-sm line-clamp-3 mb-4">
+              <CardContent className="flex-1 flex flex-col">
+                <p className="text-gray-600 text-sm line-clamp-3 mb-6 flex-1">
                   {note.description}
                 </p>
                 
-                <div className="space-y-2 text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <span>{note.uploaded_by.first_name} {note.uploaded_by.last_name}</span>
+                <div className="space-y-3 text-sm text-gray-500 mb-6 bg-gray-50/50 p-4 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <User className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">By {note.uploaded_by.first_name} {note.uploaded_by.last_name}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>{new Date(note.created_at).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">{new Date(note.created_at).toLocaleDateString()}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Download className="h-4 w-4" />
-                    <span>{note.downloads} downloads</span>
+                  <div className="flex items-center gap-3">
+                    <Download className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">{note.downloads} downloads</span>
                   </div>
                 </div>
 
-                <div className="mt-4 flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-3 mt-auto">
                   <button
                     onClick={() => handleDownload(note.id)}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                    className="w-full sm:flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
                   >
                     <Download className="h-4 w-4" />
-                    Download
+                    {note.file ? 'Download' : 'Open Link'}
                   </button>
-                  <button className="flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 transition-colors">
-                    <Eye className="h-4 w-4" />
-                  </button>
+                  {note.file && (
+                    <button
+                      onClick={() => handlePreview(note)}
+                      className="w-full sm:w-auto flex items-center justify-center px-3 py-2.5 border border-gray-200 bg-white text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -278,7 +354,7 @@ export default function NotesPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg p-6 w-full max-w-md mx-4"
+            className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto"
           >
             <h3 className="text-lg font-semibold mb-4">Upload New Note</h3>
             <form onSubmit={handleUploadNote} className="space-y-4">
@@ -304,7 +380,6 @@ export default function NotesPage() {
                   onChange={(e) => setNewNote({...newNote, description: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}
-                  required
                 />
               </div>
               
@@ -325,6 +400,18 @@ export default function NotesPage() {
                 </select>
               </div>
               
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Upload File (PDF, DOCX, etc.)
+                </label>
+                <input
+                  type="file"
+                  onChange={(e) => setNewNote({...newNote, file: e.target.files?.[0] || null})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">Or provide a URL below</p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   File URL (optional)
@@ -367,6 +454,62 @@ export default function NotesPage() {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {previewNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden shadow-2xl"
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">{previewNote.title}</h3>
+                <p className="text-sm text-gray-500">
+                  {previewNote.subject_display} • By {previewNote.uploaded_by.first_name} {previewNote.uploaded_by.last_name}
+                </p>
+              </div>
+              <button
+                onClick={handleClosePreview}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 bg-gray-100 p-4 overflow-hidden relative">
+              {getFileUrl(previewNote) ? (
+                <iframe
+                  src={getFileUrl(previewNote)!}
+                  className="w-full h-full rounded-md border border-gray-200 bg-white"
+                  title="Document Preview"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  Preview not available for this note.
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={handleClosePreview}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => handleDownload(previewNote.id)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Download File
+              </button>
+            </div>
           </motion.div>
         </div>
       )}

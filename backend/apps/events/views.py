@@ -97,6 +97,7 @@ class EventViewSet(viewsets.ModelViewSet):
                 end_date=proposal.end_date,
                 max_participants=proposal.max_participants,
                 status=proposal.status,
+                image=proposal.image,
                 organizer=proposal.proposed_by
             )
             proposal.proposal_status = 'approved'

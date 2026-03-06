@@ -135,7 +135,7 @@ export default function MessFeedbackPage() {
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading feedback...</p>
@@ -145,7 +145,7 @@ export default function MessFeedbackPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8">
         <motion.div
@@ -183,11 +183,11 @@ export default function MessFeedbackPage() {
       </div>
 
       {/* Action Bar */}
-      <div className="mb-6 flex justify-between items-center">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h2 className="text-xl font-semibold text-gray-900">Recent Feedback</h2>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Feedback
@@ -199,7 +199,7 @@ export default function MessFeedbackPage() {
         {feedbacks.map((feedback) => (
           <Card key={feedback.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getMealTypeColor(feedback.meal_type)}`}>
@@ -223,7 +223,7 @@ export default function MessFeedbackPage() {
                   {feedback.comments && (
                     <p className="text-gray-700 mb-2">{feedback.comments}</p>
                   )}
-                  <div className="flex items-center text-sm text-gray-500">
+                  <div className="flex flex-wrap items-center text-sm text-gray-500">
                     <Users className="w-4 h-4 mr-1" />
                     {feedback.user.first_name} {feedback.user.last_name}
                     <span className="mx-2">•</span>
@@ -239,7 +239,7 @@ export default function MessFeedbackPage() {
       {/* Add Feedback Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Add Feedback</h2>
             <form onSubmit={handleAddFeedback} className="space-y-4">
               <div>
@@ -288,17 +288,17 @@ export default function MessFeedbackPage() {
                   placeholder="Share your experience..."
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                  className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="w-full sm:flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   Submit Feedback
                 </button>

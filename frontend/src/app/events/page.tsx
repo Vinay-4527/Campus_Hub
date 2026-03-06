@@ -31,6 +31,7 @@ interface Event {
   max_participants: number;
   status: string;
   status_display: string;
+  image: string | null;
   organizer: {
     username: string;
     first_name: string;
@@ -54,6 +55,7 @@ interface EventProposal {
   end_date: string;
   max_participants: number;
   status: string;
+  image: string | null;
   proposal_status: 'pending' | 'approved' | 'rejected';
   proposal_status_display: string;
   admin_comment: string;
@@ -84,7 +86,8 @@ export default function EventsPage() {
     location: '',
     start_date: '',
     end_date: '',
-    max_participants: 50
+    max_participants: 50,
+    image: null as File | null
   });
 
   useEffect(() => {
@@ -144,13 +147,25 @@ export default function EventsPage() {
       const endpoint = canCreateEvent
         ? 'http://localhost:8000/api/events/events/'
         : 'http://localhost:8000/api/events/events/proposals/';
+      
+      const formData = new FormData();
+      formData.append('title', newEvent.title);
+      formData.append('description', newEvent.description);
+      formData.append('event_type', newEvent.event_type);
+      formData.append('location', newEvent.location);
+      formData.append('start_date', newEvent.start_date);
+      formData.append('end_date', newEvent.end_date);
+      formData.append('max_participants', newEvent.max_participants.toString());
+      if (newEvent.image) {
+        formData.append('image', newEvent.image);
+      }
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newEvent)
+        body: formData
       });
       if (response.ok) {
         setShowCreateModal(false);
@@ -161,7 +176,8 @@ export default function EventsPage() {
           location: '',
           start_date: '',
           end_date: '',
-          max_participants: 50
+          max_participants: 50,
+          image: null
         });
         if (canCreateEvent) {
           fetchEvents();
@@ -327,7 +343,7 @@ export default function EventsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading events...</p>
@@ -337,7 +353,7 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8">
         <motion.div
@@ -364,11 +380,11 @@ export default function EventsPage() {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             {eventTypes.map(type => (
               <option key={type.value} value={type.value}>
@@ -379,7 +395,7 @@ export default function EventsPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             {eventStatuses.map(status => (
               <option key={status.value} value={status.value}>
@@ -390,7 +406,7 @@ export default function EventsPage() {
           {canSubmitEvent && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus className="h-4 w-4" />
               {canCreateEvent ? 'Create Event' : 'Propose Event'}
@@ -412,32 +428,56 @@ export default function EventsPage() {
               {proposals
                 .filter((proposal) => proposal.proposal_status === 'pending')
                 .map((proposal) => (
-                  <Card key={proposal.id}>
-                    <CardContent className="py-4">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium text-gray-900">{proposal.title}</p>
-                          <span className="text-xs text-gray-500">
-                            {new Date(proposal.start_date).toLocaleDateString()}
+                  <Card key={proposal.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-300">
+                    <CardContent className="p-0 flex flex-col sm:flex-row">
+                      {proposal.image && (
+                        <div className="sm:w-48 h-32 sm:h-auto relative">
+                          <img 
+                            src={proposal.image} 
+                            alt={proposal.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="p-4 flex-1 flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3 className="font-semibold text-gray-900 text-lg">{proposal.title}</h3>
+                            <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>{new Date(proposal.start_date).toLocaleDateString()}</span>
+                              <span className="text-gray-300">|</span>
+                              <MapPin className="h-3.5 w-3.5" />
+                              <span>{proposal.location}</span>
+                            </div>
+                          </div>
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getEventTypeColor(proposal.event_type)}`}>
+                            {proposal.event_type}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600 line-clamp-2">{proposal.description}</p>
-                        <p className="text-xs text-gray-500">
-                          Proposed by {proposal.proposed_by.first_name} {proposal.proposed_by.last_name} ({proposal.proposed_by.username})
-                        </p>
-                        <div className="flex gap-2 pt-1">
-                          <button
-                            onClick={() => handleReviewProposal(proposal.id, 'approve')}
-                            className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleReviewProposal(proposal.id, 'reject')}
-                            className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
-                          >
-                            Reject
-                          </button>
+                        
+                        <p className="text-sm text-gray-600 line-clamp-2 mt-1">{proposal.description}</p>
+                        
+                        <div className="mt-auto pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-gray-100">
+                          <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-md">
+                            <User className="h-3.5 w-3.5" />
+                            <span>Proposed by <span className="font-medium text-gray-700">{proposal.proposed_by.first_name} {proposal.proposed_by.last_name}</span></span>
+                          </div>
+                          
+                          <div className="flex gap-2 w-full sm:w-auto">
+                            <button
+                              onClick={() => handleReviewProposal(proposal.id, 'approve')}
+                              className="flex-1 sm:flex-none px-4 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleReviewProposal(proposal.id, 'reject')}
+                              className="flex-1 sm:flex-none px-4 py-1.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                            >
+                              Reject
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -457,70 +497,89 @@ export default function EventsPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
           >
-            <Card className="h-full hover:shadow-lg transition-shadow">
-              <CardHeader>
+            <Card className="h-full hover:shadow-lg transition-all duration-300 border-none bg-white/50 backdrop-blur-sm overflow-hidden flex flex-col">
+              {event.image && (
+                <div className="relative h-48 w-full overflow-hidden">
+                  <img 
+                    src={event.image} 
+                    alt={event.title}
+                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                  />
+                  <div className="absolute top-2 right-2 flex gap-2">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium shadow-sm ${getEventTypeColor(event.event_type)}`}>
+                      {event.event_type_display}
+                    </span>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium shadow-sm ${getStatusColor(event.status)}`}>
+                      {event.status_display}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <CardHeader className={`${event.image ? 'pt-4' : ''}`}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
+                    {!event.image && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getEventTypeColor(event.event_type)}`}>
+                          {event.event_type_display}
+                        </span>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
+                          {event.status_display}
+                        </span>
+                      </div>
+                    )}
+                    <CardTitle className="text-xl font-bold text-gray-900 line-clamp-2 leading-tight">
                       {event.title}
                     </CardTitle>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getEventTypeColor(event.event_type)}`}>
-                        {event.event_type_display}
-                      </span>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
-                        {event.status_display}
-                      </span>
-                    </div>
                   </div>
-                  <Calendar className="h-6 w-6 text-gray-400 flex-shrink-0" />
+                  {!event.image && <Calendar className="h-6 w-6 text-gray-400 flex-shrink-0" />}
                 </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 text-sm line-clamp-3 mb-4">
+              <CardContent className="flex-1 flex flex-col">
+                <p className="text-gray-600 text-sm line-clamp-3 mb-6 flex-1">
                   {event.description}
                 </p>
                 
-                <div className="space-y-2 text-sm text-gray-500 mb-4">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    <span>{event.location}</span>
+                <div className="space-y-3 text-sm text-gray-500 mb-6 bg-gray-50/50 p-4 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <span className="font-medium text-gray-700">{event.location}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>{new Date(event.start_date).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">{new Date(event.start_date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    <span>{new Date(event.start_date).toLocaleTimeString()} - {new Date(event.end_date).toLocaleTimeString()}</span>
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">
+                      {new Date(event.start_date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} - {new Date(event.end_date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span>{event.available_spots} spots available</span>
+                  <div className="flex items-center gap-3">
+                    <Users className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">{event.available_spots} spots available</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <span>Organized by {event.organizer.first_name} {event.organizer.last_name}</span>
+                  <div className="flex items-center gap-3">
+                    <User className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">By {event.organizer.first_name} {event.organizer.last_name}</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-3 mt-auto">
                   {event.is_full ? (
-                    <button className="flex-1 px-3 py-2 bg-gray-400 text-white text-sm rounded-md cursor-not-allowed">
+                    <button className="w-full sm:flex-1 px-4 py-2.5 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg cursor-not-allowed flex items-center justify-center gap-2">
+                      <XCircle className="h-4 w-4" />
                       Event Full
                     </button>
                   ) : (
                     <button
                       onClick={() => handleRegisterEvent(event.id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                      className="w-full sm:flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
                     >
                       <CheckCircle className="h-4 w-4" />
                       Register
                     </button>
                   )}
-                  <button className="flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 transition-colors">
-                    <Eye className="h-4 w-4" />
-                  </button>
                 </div>
               </CardContent>
             </Card>
@@ -634,6 +693,18 @@ export default function EventsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   min="1"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Event Image (optional)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setNewEvent({ ...newEvent, image: e.target.files?.[0] || null })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               

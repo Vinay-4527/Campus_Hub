@@ -19,11 +19,13 @@ class LostFoundItem(models.Model):
     ]
     
     item_name = models.CharField(max_length=200)
-    description = models.TextField()
+    description = models.TextField(blank=True)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='other')
     location = models.CharField(max_length=200)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='lost')
-    contact_info = models.CharField(max_length=200, blank=True)
+    primary_phone = models.CharField(max_length=20, default='')
+    secondary_phone = models.CharField(max_length=20, blank=True)
+    image = models.ImageField(upload_to='lost_found/', blank=True, null=True)
     
     # User who reported the item
     reported_by = models.ForeignKey(

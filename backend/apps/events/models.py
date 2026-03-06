@@ -27,6 +27,7 @@ class Event(models.Model):
     max_participants = models.PositiveIntegerField(null=True, blank=True)
     current_participants = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='upcoming')
+    image = models.ImageField(upload_to='events/', blank=True, null=True)
     
     # Organizer
     organizer = models.ForeignKey(
@@ -94,6 +95,7 @@ class EventProposal(models.Model):
     status = models.CharField(max_length=20, choices=Event.STATUS_CHOICES, default='upcoming')
     proposal_status = models.CharField(max_length=20, choices=PROPOSAL_STATUS_CHOICES, default='pending')
     admin_comment = models.TextField(blank=True)
+    image = models.ImageField(upload_to='event_proposals/', blank=True, null=True)
 
     proposed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

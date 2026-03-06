@@ -24,7 +24,7 @@ class EventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'description', 'event_type', 'location',
             'start_date', 'end_date', 'max_participants', 'current_participants',
-            'status', 'organizer', 'participants', 'registrations',
+            'status', 'image', 'organizer', 'participants', 'registrations',
             'is_full', 'available_spots', 'is_upcoming', 'is_ongoing',
             'created_at', 'updated_at'
         ]
@@ -35,7 +35,7 @@ class EventCreateSerializer(serializers.ModelSerializer):
         model = Event
         fields = [
             'title', 'description', 'event_type', 'location',
-            'start_date', 'end_date', 'max_participants', 'status'
+            'start_date', 'end_date', 'max_participants', 'status', 'image'
         ]
 
 class EventUpdateSerializer(serializers.ModelSerializer):
@@ -43,7 +43,7 @@ class EventUpdateSerializer(serializers.ModelSerializer):
         model = Event
         fields = [
             'title', 'description', 'event_type', 'location',
-            'start_date', 'end_date', 'max_participants', 'status'
+            'start_date', 'end_date', 'max_participants', 'status', 'image'
         ]
 
 
@@ -58,7 +58,7 @@ class EventProposalSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'event_type', 'location',
             'start_date', 'end_date', 'max_participants', 'status',
             'proposal_status', 'proposal_status_display', 'admin_comment',
-            'proposed_by', 'reviewed_by', 'created_event',
+            'proposed_by', 'reviewed_by', 'created_event', 'image',
             'created_at', 'updated_at', 'reviewed_at'
         ]
         read_only_fields = [

@@ -31,7 +31,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
       <div className={collapsed ? 'lg:pl-20' : 'lg:pl-64'} id="layout-content">
-        <main className="min-h-screen">
+        <main className="min-h-screen pt-14 sm:pt-16 lg:pt-0">
           {children}
         </main>
       </div>

@@ -132,21 +132,21 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <Link href="/" className="flex items-center space-x-4 hover:opacity-80 transition-opacity cursor-pointer">
-              <div className="w-12 h-12 bg-[#5bccf6] rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#5bccf6] rounded-xl flex items-center justify-center shadow-lg">
                 <GraduationCap className="w-7 h-7 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-[#030e12]">Campus Hub</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-[#030e12]">Campus Hub</h1>
             </Link>
-            <div className="flex space-x-4">
+              <div className="flex space-x-2 sm:space-x-4">
               <Link
                 href="/auth?mode=login"
-                className="px-6 py-2 bg-[#5bccf6] text-[#030e12] rounded-xl hover:opacity-90 transition-all duration-300 font-medium shadow"
+                  className="px-4 sm:px-6 py-2 bg-[#5bccf6] text-[#030e12] rounded-xl hover:opacity-90 transition-all duration-300 font-medium shadow text-sm sm:text-base"
               >
                 Log In
               </Link>
               <Link
                 href="/auth?mode=signup"
-                className="px-6 py-2 bg-[#5bccf6] text-[#030e12] rounded-xl hover:opacity-90 transition-all duration-300 font-medium shadow"
+                  className="px-4 sm:px-6 py-2 bg-[#5bccf6] text-[#030e12] rounded-xl hover:opacity-90 transition-all duration-300 font-medium shadow text-sm sm:text-base"
               >
                 Sign Up
               </Link>
@@ -174,9 +174,9 @@ export default function HomePage() {
                   whileInView={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.8, delay: 0.2 }}
                   viewport={{ once: true, amount: 0.6 }}
-                  className="inline-flex items-center justify-center w-32 h-32 bg-[#5bccf6] rounded-full mb-10 shadow-2xl hover:scale-105 transition-transform cursor-pointer"
+                  className="inline-flex items-center justify-center w-24 h-24 sm:w-32 sm:h-32 bg-[#5bccf6] rounded-full mb-8 sm:mb-10 shadow-2xl hover:scale-105 transition-transform cursor-pointer"
                 >
-                  <GraduationCap className="w-16 h-16 text-white" />
+                  <GraduationCap className="w-12 h-12 sm:w-16 sm:h-16 text-white" />
                 </motion.div>
               </Link>
             
@@ -185,7 +185,7 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
               viewport={{ once: true, amount: 0.6 }}
-              className="text-6xl font-bold text-[#030e12] mb-8"
+              className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#030e12] mb-6 sm:mb-8"
             >
               Welcome to <span className="text-[#030e12]">Campus Hub</span>
             </motion.h1>
@@ -195,7 +195,7 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
               viewport={{ once: true, amount: 0.6 }}
-              className="text-xl text-[#030e12]/80 mb-16 max-w-4xl mx-auto leading-relaxed"
+              className="text-base sm:text-lg lg:text-xl text-[#030e12]/80 mb-10 sm:mb-16 max-w-4xl mx-auto leading-relaxed"
             >
               Your one-stop platform for all campus utilities. Connect, share, and make campus life easier.
             </motion.p>
@@ -206,7 +206,7 @@ export default function HomePage() {
               transition={{ duration: 0.8, delay: 0.8 }}
               viewport={{ once: true, amount: 0.6 }}
               onClick={scrollToFeatures}
-              className="inline-flex items-center px-10 py-4 bg-[#5bccf6] text-[#030e12] font-bold text-lg rounded-2xl hover:opacity-90 transition-all duration-300 transform hover:scale-105 shadow"
+              className="inline-flex items-center px-6 sm:px-10 py-3 sm:py-4 bg-[#5bccf6] text-[#030e12] font-bold text-base sm:text-lg rounded-2xl hover:opacity-90 transition-all duration-300 transform hover:scale-105 shadow"
             >
               Explore Campus Hub
               <ArrowDown className="ml-3 h-6 w-6" />
@@ -215,25 +215,25 @@ export default function HomePage() {
         </motion.div>
 
         {/* Features Section */}
-        <div id="features-section" className="py-20 px-4">
+        <div id="features-section" className="py-14 sm:py-20 px-4">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true, amount: 0.3 }}
-            className="text-center mb-20"
+            className="text-center mb-12 sm:mb-20"
           >
-            <h2 className="text-4xl font-bold text-[#030e12] mb-6">
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#030e12] mb-4 sm:mb-6">
               Explore Campus Hub Features
             </h2>
-            <p className="text-lg text-[#030e12]/80 max-w-4xl mx-auto leading-relaxed">
-              Discover how Campus Hub connects students, faculty, and staff. 
-              Browse through our features and see what's happening on campus.
+            <p className="text-base sm:text-lg text-[#030e12]/80 max-w-4xl mx-auto leading-relaxed">
+              Discover how Campus Hub connects students, class representatives, and administrators. 
+              Browse through our features and see what&apos;s happening on campus.
             </p>
           </motion.div>
 
           {/* Features Grid */}
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 mb-20">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-12 mb-14 sm:mb-20">
             {/* Lost & Found */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
@@ -503,9 +503,9 @@ export default function HomePage() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true, amount: 0.3 }}
-            className="text-center mb-20"
+            className="text-center mb-12 sm:mb-20"
           >
-            <h2 className="text-3xl font-bold text-gray-900 mb-10">Platform Statistics</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8 sm:mb-10">Platform Statistics</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
               <motion.div 
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -514,7 +514,7 @@ export default function HomePage() {
                 viewport={{ once: true, amount: 0.4 }}
                 className="text-center p-6 bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-all duration-300"
               >
-                <div className="text-5xl font-bold text-cyan-400 mb-3">500+</div>
+                <div className="text-4xl sm:text-5xl font-bold text-cyan-400 mb-3">500+</div>
                 <div className="text-gray-600 font-medium text-base">Active Students</div>
               </motion.div>
               <motion.div 
@@ -524,7 +524,7 @@ export default function HomePage() {
                 viewport={{ once: true, amount: 0.4 }}
                 className="text-center p-6 bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-all duration-300"
               >
-                <div className="text-5xl font-bold text-pink-400 mb-3">50+</div>
+                <div className="text-4xl sm:text-5xl font-bold text-pink-400 mb-3">50+</div>
                 <div className="text-gray-600 font-medium text-base">Events Created</div>
               </motion.div>
               <motion.div 
@@ -534,7 +534,7 @@ export default function HomePage() {
                 viewport={{ once: true, amount: 0.4 }}
                 className="text-center p-6 bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-all duration-300"
               >
-                <div className="text-5xl font-bold text-yellow-400 mb-3">1000+</div>
+                <div className="text-4xl sm:text-5xl font-bold text-yellow-400 mb-3">1000+</div>
                 <div className="text-gray-600 font-medium text-base">Items Found</div>
               </motion.div>
         </div>
@@ -549,23 +549,23 @@ export default function HomePage() {
             className="text-center"
           >
             <Card className="bg-[#030e12] text-white border-0 shadow-2xl max-w-4xl mx-auto">
-              <CardContent className="p-12">
-                <h3 className="text-4xl font-bold mb-6">
+              <CardContent className="p-6 sm:p-12">
+                <h3 className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-6">
                   Ready to Join the Campus Community?
                 </h3>
-                <p className="text-xl mb-10 opacity-90 leading-relaxed">
+                <p className="text-base sm:text-xl mb-8 sm:mb-10 opacity-90 leading-relaxed">
                   Connect with fellow students, share resources, and make the most of your campus experience.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link
                     href="/auth?mode=signup"
-                    className="px-10 py-4 bg-[#5bccf6] text-[#030e12] font-bold text-lg rounded-xl hover:opacity-90 transition-all duration-300 transform hover:scale-105 shadow"
+                    className="px-6 sm:px-10 py-3 sm:py-4 bg-[#5bccf6] text-[#030e12] font-bold text-base sm:text-lg rounded-xl hover:opacity-90 transition-all duration-300 transform hover:scale-105 shadow"
                   >
                     Create Account
                   </Link>
                   <Link
                     href="/auth?mode=login"
-                    className="px-10 py-4 border-2 border-white text-white font-bold text-lg rounded-xl hover:bg-white hover:text-[#030e12] transition-all duration-300 transform hover:scale-105"
+                    className="px-6 sm:px-10 py-3 sm:py-4 border-2 border-white text-white font-bold text-base sm:text-lg rounded-xl hover:bg-white hover:text-[#030e12] transition-all duration-300 transform hover:scale-105"
                   >
                     Log In
                   </Link>

@@ -9,7 +9,6 @@ class User(AbstractUser):
     ROLE_CHOICES = [
         ('student', 'Student'),
         ('admin', 'Admin'),
-        ('faculty', 'Faculty'),
     ]
     
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='student')
@@ -37,10 +36,6 @@ class User(AbstractUser):
     def is_admin(self):
         return self.role == 'admin'
     
-    @property
-    def is_faculty(self):
-        return self.role == 'faculty'
-
     @property
     def can_propose_events(self):
         return self.role == 'student' and self.is_class_representative

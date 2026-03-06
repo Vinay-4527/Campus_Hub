@@ -100,7 +100,7 @@ export default function SettingsPage() {
     }
   };
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -245,7 +245,7 @@ export default function SettingsPage() {
 
               {showChangePassword && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                  <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
                     <h3 className="text-lg font-semibold mb-4">Change Password</h3>
                     {changeError && <p className="mb-3 text-sm text-red-600">{changeError}</p>}
                     <form onSubmit={submitPasswordChange} className="space-y-4">
@@ -261,9 +261,9 @@ export default function SettingsPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
                         <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                       </div>
-                      <div className="flex gap-2 pt-2">
-                        <button type="button" onClick={() => setShowChangePassword(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
-                        <button type="submit" disabled={changing} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60">{changing ? 'Saving...' : 'Update Password'}</button>
+                      <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                        <button type="button" onClick={() => setShowChangePassword(false)} className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
+                        <button type="submit" disabled={changing} className="w-full sm:flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60">{changing ? 'Saving...' : 'Update Password'}</button>
                       </div>
                     </form>
                   </div>
@@ -285,12 +285,12 @@ export default function SettingsPage() {
       >
         <Card className="border-red-200">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Danger Zone</h3>
                 <p className="text-sm text-gray-600">Irreversible and destructive actions</p>
               </div>
-              <button onClick={handleLogout} disabled={isLoggingOut} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed">
+              <button onClick={handleLogout} disabled={isLoggingOut} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed">
                 <LogOut className="w-4 h-4" />
                 {isLoggingOut ? 'Logging out...' : 'Logout'}
               </button>

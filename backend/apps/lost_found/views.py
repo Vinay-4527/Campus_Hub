@@ -28,7 +28,7 @@ class LostFoundItemViewSet(viewsets.ModelViewSet):
         return LostFoundItemSerializer
 
     def perform_create(self, serializer):
-        serializer.save(reported_by=self.request.user)
+        serializer.save(reported_by=self.request.user, status='lost')
 
     @action(detail=True, methods=['post'])
     def claim_item(self, request, pk=None):
@@ -63,6 +63,28 @@ class LostFoundItemViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(item)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def mark_found(self, request, pk=None):
+        item = self.get_object()
+
+        if item.reported_by_id != request.user.id and getattr(request.user, 'role', None) != 'admin':
+            return Response(
+                {'error': 'Only the reporter or admin can mark this item as found'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if item.status == 'returned':
+            return Response(
+                {'error': 'Item is already resolved'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        item.status = 'returned'
+        item.save(update_fields=['status', 'updated_at'])
+
+        serializer = self.get_serializer(item)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'])
     def my_items(self, request):

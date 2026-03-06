@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading dashboard...</p>
@@ -94,7 +94,6 @@ export default function DashboardPage() {
 
   const isAdmin = user.role === 'admin';
   const isStudent = user.role === 'student';
-  const isFaculty = user.role === 'faculty';
 
   const stats = [
     {
@@ -171,8 +170,8 @@ export default function DashboardPage() {
   // (moved theme apply/useEffect above to keep consistent hooks order)
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-8 sticky top-0 z-10 bg-gray-50 py-3 -mx-6 lg:-mx-8 px-6 lg:px-8">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-8 sticky top-0 z-10 bg-gray-50 py-3 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -182,7 +181,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-600 mt-2">
-            Welcome back, {user.first_name} {user.last_name}! Here's what's happening on campus.
+            Welcome back, {user.first_name} {user.last_name}! Here&apos;s what&apos;s happening on campus.
             </p>
             <div className="mt-4 flex items-center space-x-4">
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
@@ -331,19 +330,6 @@ export default function DashboardPage() {
                   </button>
                   <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 transform hover:scale-105 transition-all duration-200">
                     View Analytics
-                  </button>
-                </>
-              )}
-              {isFaculty && (
-                <>
-                  <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 transform hover:scale-105 transition-all duration-200">
-                    Create Event
-                  </button>
-                  <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transform hover:scale-105 transition-all duration-200">
-                    Share Notes
-                  </button>
-                  <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transform hover:scale-105 transition-all duration-200">
-                    View Feedback
                   </button>
                 </>
               )}

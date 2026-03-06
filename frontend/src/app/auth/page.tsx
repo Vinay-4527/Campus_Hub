@@ -138,7 +138,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-[#fcde67] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md sm:max-w-lg">
         {/* Logo and Title */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -156,7 +156,7 @@ export default function AuthPage() {
               <GraduationCap className="w-10 h-10 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-[#030e12]/90 mb-3">Campus Hub</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-[#030e12]/90 mb-3">Campus Hub</h1>
           <p className="text-[#030e12]/80 text-lg">Your gateway to campus life</p>
         </motion.div>
 
@@ -165,7 +165,7 @@ export default function AuthPage() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-xl p-8 border border-[#030e12]/10"
+          className="bg-white rounded-2xl shadow-xl p-5 sm:p-8 border border-[#030e12]/10"
         >
           {/* Toggle Buttons */}
           <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
@@ -274,7 +274,7 @@ export default function AuthPage() {
                 onSubmit={handleSubmit}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-800 mb-2">
                       First Name
@@ -366,7 +366,6 @@ export default function AuthPage() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-0 focus:border-blue-500 transition-all duration-200"
                   >
                     <option value="student">Student</option>
-                    <option value="faculty">Faculty</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>

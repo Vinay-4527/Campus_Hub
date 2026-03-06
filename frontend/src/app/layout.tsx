@@ -31,7 +31,7 @@ export default function RootLayout({
         <meta httpEquiv="Expires" content="0" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
         {children}
       </body>

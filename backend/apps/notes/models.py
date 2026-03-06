@@ -17,7 +17,7 @@ class Note(models.Model):
     ]
     
     title = models.CharField(max_length=200)
-    description = models.TextField()
+    description = models.TextField(blank=True)
     subject = models.CharField(max_length=20, choices=SUBJECT_CHOICES, default='other')
     file = models.FileField(upload_to='notes/', blank=True, null=True)
     file_url = models.URLField(blank=True, null=True)

@@ -79,7 +79,11 @@ export default function Sidebar() {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4">
-            <Link href="/" className="flex items-center gap-2 text-xl font-bold text-slate-900 hover:text-sky-700 transition-colors cursor-pointer">
+            <Link
+              href="/dashboard"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-2 text-xl font-bold text-slate-900 hover:text-sky-700 transition-colors cursor-pointer"
+            >
               <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-sky-500 text-white shadow-sm">
                 <GraduationCap className="w-5 h-5" />
               </span>
@@ -126,7 +130,7 @@ export default function Sidebar() {
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
           <div className={`grid grid-cols-[1fr_auto] h-16 items-center ${collapsed ? 'px-2' : 'px-4'} w-full`}>
             <div className={`${collapsed ? 'flex justify-center' : 'flex items-center pl-2'}`}>
-              <Link href="/" className={`flex items-center ${collapsed ? 'gap-0' : 'gap-2'} text-xl font-bold text-slate-900 hover:text-sky-700 transition-colors cursor-pointer`}>
+              <Link href="/dashboard" className={`flex items-center ${collapsed ? 'gap-0' : 'gap-2'} text-xl font-bold text-slate-900 hover:text-sky-700 transition-colors cursor-pointer`}>
                 <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-sky-500 text-white shadow-sm">
                   <GraduationCap className="w-5 h-5" />
                 </span>

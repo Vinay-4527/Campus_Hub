@@ -12,7 +12,9 @@ interface LostFoundItem {
   category: string;
   location: string;
   status: string;
-  contact_info: string;
+  primary_phone: string;
+  secondary_phone: string;
+  image: string | null;
   reported_by: {
     first_name: string;
     last_name: string;
@@ -34,8 +36,13 @@ export default function LostFoundPage() {
     description: '',
     category: 'other',
     location: '',
-    status: 'lost',
-    contact_info: ''
+    primary_phone: '',
+    secondary_phone: '',
+    image: null as File | null
+  });
+  const [phoneErrors, setPhoneErrors] = useState({
+    primary_phone: '',
+    secondary_phone: ''
   });
   const [contactModalItem, setContactModalItem] = useState<LostFoundItem | null>(null);
   const [claimModalItem, setClaimModalItem] = useState<LostFoundItem | null>(null);
@@ -45,6 +52,7 @@ export default function LostFoundPage() {
     proofFile: null as File | null,
   });
   const [currentUser, setCurrentUser] = useState<{ id: number; email: string } | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<{ src: string; title: string } | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -91,15 +99,33 @@ export default function LostFoundPage() {
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    const primaryError = getPhoneValidationError(newItem.primary_phone, true);
+    const secondaryError = getPhoneValidationError(newItem.secondary_phone, false);
+    setPhoneErrors({
+      primary_phone: primaryError,
+      secondary_phone: secondaryError
+    });
+    if (primaryError || secondaryError) {
+      return;
+    }
     try {
       const token = localStorage.getItem('accessToken');
+      const formData = new FormData();
+      formData.append('item_name', newItem.item_name);
+      formData.append('description', newItem.description);
+      formData.append('category', newItem.category);
+      formData.append('location', newItem.location);
+      formData.append('primary_phone', newItem.primary_phone);
+      formData.append('secondary_phone', newItem.secondary_phone);
+      if (newItem.image) {
+        formData.append('image', newItem.image);
+      }
       const response = await fetch('http://localhost:8000/api/lost-found/items/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newItem)
+        body: formData
       });
       
       if (response.ok) {
@@ -109,9 +135,11 @@ export default function LostFoundPage() {
           description: '',
           category: 'other',
           location: '',
-          status: 'lost',
-          contact_info: ''
+          primary_phone: '',
+          secondary_phone: '',
+          image: null
         });
+        setPhoneErrors({ primary_phone: '', secondary_phone: '' });
         fetchItems();
       }
     } catch (error) {
@@ -144,6 +172,28 @@ export default function LostFoundPage() {
     }
   };
 
+  const handleMarkFound = async (itemId: number) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`http://localhost:8000/api/lost-found/items/${itemId}/mark_found/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        fetchItems();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'Could not mark item as found.');
+      }
+    } catch (error) {
+      console.error('Error marking item as found:', error);
+    }
+  };
+
   const openContactModal = (item: LostFoundItem) => {
     setContactModalItem(item);
   };
@@ -161,21 +211,38 @@ export default function LostFoundPage() {
     }
   };
 
-  const buildSmartContactLink = (contactInfo: string): { href: string; label: string } | null => {
-    const trimmed = contactInfo.trim();
-    if (!trimmed) return null;
-    if (trimmed.includes('@')) {
-      // Add a basic subject/body and cc the logged-in user
-      const subject = encodeURIComponent('Inquiry about your lost item from Campus Hub');
-      const body = encodeURIComponent('Hi, I think I might have found your item.');
-      const cc = currentUser?.email ? `&cc=${encodeURIComponent(currentUser.email)}` : '';
-      return { href: `mailto:${trimmed}?subject=${subject}&body=${body}${cc}` , label: 'Send Email' };
+  const getPhoneValidationError = (value: string, isRequired: boolean): string => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return isRequired ? 'Primary phone number is required.' : '';
     }
-    const digits = trimmed.replace(/[^0-9+]/g, '');
-    if (digits.length >= 8) {
-      return { href: `tel:${digits}`, label: 'Call' };
+
+    if (/[^0-9+\s\-()]/.test(trimmed)) {
+      return 'Invalid character. Use digits, spaces, +, -, and parentheses only.';
     }
-    return null;
+
+    const plusCount = (trimmed.match(/\+/g) || []).length;
+    if (plusCount > 1 || (plusCount === 1 && !trimmed.startsWith('+'))) {
+      return 'The + sign is allowed only at the beginning.';
+    }
+
+    const digitsOnly = trimmed.replace(/\D/g, '');
+    if (digitsOnly.length < 10) {
+      return 'Phone number must be at least 10 digits.';
+    }
+    if (digitsOnly.length > 15) {
+      return 'Phone number must not exceed 15 digits.';
+    }
+
+    return '';
+  };
+
+  const handlePhoneInputChange = (field: 'primary_phone' | 'secondary_phone', value: string) => {
+    setNewItem((prev) => ({ ...prev, [field]: value }));
+    setPhoneErrors((prev) => ({
+      ...prev,
+      [field]: getPhoneValidationError(value, field === 'primary_phone')
+    }));
   };
 
   const isCollegeEmail = (email: string | undefined | null): boolean => {
@@ -184,16 +251,12 @@ export default function LostFoundPage() {
     return email.toLowerCase().endsWith(domain.toLowerCase());
   };
 
-  const extractPhoneFromString = (text: string | undefined | null): string | null => {
-    if (!text) return null;
-    const digits = text.replace(/[^0-9+]/g, '');
-    return digits.length >= 8 ? digits : null;
-  };
-
   const filteredItems = items.filter(item => {
     const matchesSearch = item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
+    const matchesStatus = filterStatus === 'all'
+      ? item.status !== 'returned'
+      : item.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -209,7 +272,7 @@ export default function LostFoundPage() {
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading items...</p>
@@ -219,16 +282,16 @@ export default function LostFoundPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-3xl font-bold text-gray-900">Lost & Found</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Lost & Found</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-2">
             Report lost items or help others find their belongings
           </p>
         </motion.div>
@@ -247,21 +310,20 @@ export default function LostFoundPage() {
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Status</option>
               <option value="lost">Lost</option>
               <option value="found">Found</option>
               <option value="claimed">Claimed</option>
-              <option value="returned">Returned</option>
             </select>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="w-full sm:w-auto justify-center flex items-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <Plus className="w-4 h-4 mr-2" />
               Report Item
@@ -271,41 +333,58 @@ export default function LostFoundPage() {
       </div>
 
       {/* Items Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {filteredItems.map((item) => (
-          <Card key={item.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
+          <Card key={item.id} className="hover:shadow-md transition-all duration-200 border border-slate-200 rounded-2xl bg-white">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{item.item_name}</CardTitle>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
+                <CardTitle className="text-xl font-semibold text-slate-900 line-clamp-1">{item.item_name}</CardTitle>
+                <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
                   {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                 </span>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600 mb-4">{item.description}</p>
-              <div className="space-y-2 text-sm text-gray-500">
-                <div className="flex items-center">
-                  <MapPin className="w-4 h-4 mr-2" />
+              {item.image && (
+                <div className="relative mb-4">
+                  <img
+                    src={item.image}
+                    alt={item.item_name}
+                    className="w-full h-40 object-cover rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFullscreenImage({ src: item.image as string, title: item.item_name })}
+                    className="absolute top-2 right-2 p-2 text-xs bg-black/70 text-white rounded-lg hover:bg-black/80"
+                    title="View fullscreen"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              <p className="text-gray-600 mb-4 text-sm sm:text-base">{item.description || 'No description provided.'}</p>
+              <div className="space-y-2.5 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-gray-500" />
                   {item.location}
                 </div>
-                <div className="flex items-center">
-                  <Clock className="w-4 h-4 mr-2" />
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-500" />
                   {new Date(item.created_at).toLocaleDateString()}
                 </div>
-                <div className="flex items-center">
-                  <User className="w-4 h-4 mr-2" />
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-gray-500" />
                   {item.reported_by.first_name} {item.reported_by.last_name}
                 </div>
-                <div className="flex items-center">
-                  <Tag className="w-4 h-4 mr-2" />
+                <div className="flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-gray-500" />
                   {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                 </div>
               </div>
-              <div className="flex gap-2 mt-4">
+              <div className="flex flex-col sm:flex-row gap-2 mt-5">
                 {item.status === 'found' && (
                   currentUser && item.reported_by?.id === currentUser.id ? (
-                    <span className="flex-1 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-center">
+                    <span className="w-full sm:flex-1 px-4 py-2.5 bg-yellow-100 text-yellow-800 rounded-xl text-center font-medium">
                       Posted by You
                     </span>
                   ) : (
@@ -314,22 +393,32 @@ export default function LostFoundPage() {
                         setClaimModalItem(item);
                         setClaimForm({ details: '', contact: currentUser?.email || '', proofFile: null });
                       }}
-                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      className="w-full sm:flex-1 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium"
                     >
                       Claim This Item
                     </button>
                   )
                 )}
                 {item.status === 'lost' && (
-                  <button
-                    onClick={() => openContactModal(item)}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Contact Owner
-                  </button>
+                  <>
+                    <button
+                      onClick={() => openContactModal(item)}
+                      className="w-full sm:flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium"
+                    >
+                      Contact Owner
+                    </button>
+                    {currentUser && item.reported_by?.id === currentUser.id && (
+                      <button
+                        onClick={() => handleMarkFound(item.id)}
+                        className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-medium"
+                      >
+                        Found
+                      </button>
+                    )}
+                  </>
                 )}
                 {item.status === 'claimed' && (
-                  <button className="flex-1 px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed">
+                  <button className="w-full sm:flex-1 px-4 py-2.5 bg-gray-400 text-white rounded-xl cursor-not-allowed font-medium">
                     Already Claimed
                   </button>
                 )}
@@ -342,7 +431,7 @@ export default function LostFoundPage() {
       {/* Add Item Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Report Item</h2>
             <form onSubmit={handleAddItem} className="space-y-4">
               <div>
@@ -362,7 +451,7 @@ export default function LostFoundPage() {
                   onChange={(e) => setNewItem({...newItem, description: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   rows={3}
-                  required
+                  placeholder="Optional details about the item"
                 />
               </div>
               <div>
@@ -391,24 +480,43 @@ export default function LostFoundPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Status</label>
-                <select
-                  value={newItem.status}
-                  onChange={(e) => setNewItem({...newItem, status: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="lost">Lost</option>
-                  <option value="found">Found</option>
-                </select>
+                <label className="block text-sm font-medium mb-1">Primary Phone Number</label>
+                <input
+                  type="tel"
+                  value={newItem.primary_phone}
+                  onChange={(e) => handlePhoneInputChange('primary_phone', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg ${phoneErrors.primary_phone ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="Required"
+                  pattern="^\+?[0-9\s\-()]{10,20}$"
+                  title="Enter a valid phone number (10-15 digits, optional +, spaces, dashes, parentheses)."
+                  required
+                />
+                {phoneErrors.primary_phone && (
+                  <p className="mt-1 text-xs text-red-600">{phoneErrors.primary_phone}</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Contact Info</label>
+                <label className="block text-sm font-medium mb-1">Secondary Phone Number (optional)</label>
                 <input
-                  type="text"
-                  value={newItem.contact_info}
-                  onChange={(e) => setNewItem({...newItem, contact_info: e.target.value})}
+                  type="tel"
+                  value={newItem.secondary_phone}
+                  onChange={(e) => handlePhoneInputChange('secondary_phone', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg ${phoneErrors.secondary_phone ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="Optional"
+                  pattern="^\+?[0-9\s\-()]{10,20}$"
+                  title="Enter a valid phone number (10-15 digits, optional +, spaces, dashes, parentheses)."
+                />
+                {phoneErrors.secondary_phone && (
+                  <p className="mt-1 text-xs text-red-600">{phoneErrors.secondary_phone}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Image (optional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setNewItem({ ...newItem, image: e.target.files?.[0] || null })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Phone or email"
                 />
               </div>
               <div className="flex gap-2">
@@ -434,7 +542,7 @@ export default function LostFoundPage() {
       {/* Contact Owner Modal */}
       {contactModalItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Contact Owner</h2>
             <div className="space-y-3 text-sm text-gray-700">
               <div>
@@ -446,12 +554,12 @@ export default function LostFoundPage() {
                 <p className="font-medium text-gray-900">{contactModalItem.reported_by.first_name} {contactModalItem.reported_by.last_name}</p>
               </div>
               <div>
-                <p className="text-gray-500">Email</p>
+                <p className="text-gray-500">Primary Phone</p>
                 <div className="flex items-center gap-2">
-                  <p className="font-medium text-gray-900 break-all">{contactModalItem.reported_by.email || 'Not provided'}</p>
-                  {contactModalItem.reported_by.email && (
+                  <p className="font-medium text-gray-900 break-all">{contactModalItem.primary_phone || 'Not provided'}</p>
+                  {contactModalItem.primary_phone && (
                     <button
-                      onClick={() => copyContactInfoToClipboard(contactModalItem.reported_by.email!)}
+                      onClick={() => copyContactInfoToClipboard(contactModalItem.primary_phone)}
                       className="px-2 py-1 text-xs border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 inline-flex items-center gap-1"
                     >
                       <Copy className="w-3 h-3" /> Copy
@@ -460,12 +568,12 @@ export default function LostFoundPage() {
                 </div>
               </div>
               <div>
-                <p className="text-gray-500">Phone</p>
+                <p className="text-gray-500">Secondary Phone</p>
                 <div className="flex items-center gap-2">
-                  <p className="font-medium text-gray-900 break-all">{contactModalItem.reported_by.phone_number || extractPhoneFromString(contactModalItem.contact_info) || 'Not provided'}</p>
-                  {(contactModalItem.reported_by.phone_number || extractPhoneFromString(contactModalItem.contact_info)) && (
+                  <p className="font-medium text-gray-900 break-all">{contactModalItem.secondary_phone || 'Not provided'}</p>
+                  {contactModalItem.secondary_phone && (
                     <button
-                      onClick={() => copyContactInfoToClipboard((contactModalItem.reported_by.phone_number || extractPhoneFromString(contactModalItem.contact_info))!)}
+                      onClick={() => copyContactInfoToClipboard(contactModalItem.secondary_phone)}
                       className="px-2 py-1 text-xs border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 inline-flex items-center gap-1"
                     >
                       <Copy className="w-3 h-3" /> Copy
@@ -474,28 +582,20 @@ export default function LostFoundPage() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2 mt-6">
+            <div className="flex flex-col sm:flex-row gap-2 mt-6">
               <button
                 onClick={closeContactModal}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-lg"
               >
                 Close
               </button>
-              {contactModalItem.contact_info && buildSmartContactLink(contactModalItem.contact_info) && (
-                (() => {
-                  const link = buildSmartContactLink(contactModalItem.contact_info)!;
-                  const emailMode = link.href.startsWith('mailto:');
-                  const allowed = emailMode ? isCollegeEmail(currentUser?.email) : true;
-                  return (
-                    <a
-                      href={allowed ? link.href : undefined}
-                      onClick={(e) => { if (!allowed) { e.preventDefault(); alert('Please use your college email to contact the owner.'); } }}
-                      className={`flex-1 px-4 py-2 text-white text-center rounded-lg ${allowed ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300 cursor-not-allowed'}`}
-                    >
-                      {emailMode ? (allowed ? 'Send Email (College ID)' : 'Email (College ID required)') : link.label}
-                    </a>
-                  );
-                })()
+              {contactModalItem.primary_phone && (
+                <a
+                  href={`tel:${contactModalItem.primary_phone.replace(/[^0-9+]/g, '')}`}
+                  className="w-full sm:flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-lg"
+                >
+                  Call
+                </a>
               )}
             </div>
           </div>
@@ -505,7 +605,7 @@ export default function LostFoundPage() {
       {/* Claim Request Modal */}
       {claimModalItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Claim This Item</h2>
             <form
               onSubmit={(e) => {
@@ -546,11 +646,32 @@ export default function LostFoundPage() {
                   accept="image/*,application/pdf"
                 />
               </div>
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setClaimModalItem(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">Cancel</button>
-                <button type="submit" className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Submit Claim</button>
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <button type="button" onClick={() => setClaimModalItem(null)} className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-lg">Cancel</button>
+                <button type="submit" className="w-full sm:flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Submit Claim</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Image Preview */}
+      {fullscreenImage && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={() => setFullscreenImage(null)}
+            className="absolute top-4 right-4 px-3 py-2 rounded-md bg-white/10 text-white hover:bg-white/20"
+          >
+            Close
+          </button>
+          <div className="max-w-6xl w-full max-h-[90vh] flex flex-col items-center">
+            <img
+              src={fullscreenImage.src}
+              alt={fullscreenImage.title}
+              className="max-h-[82vh] w-auto max-w-full object-contain rounded-lg"
+            />
+            <p className="mt-3 text-sm text-gray-200">{fullscreenImage.title}</p>
           </div>
         </div>
       )}

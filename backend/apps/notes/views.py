@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404
 from .models import Note
 from .serializers import (
@@ -42,11 +42,40 @@ class NoteViewSet(viewsets.ModelViewSet):
         note = self.get_object()
         if note.file:
             note.increment_downloads()
-            response = HttpResponse(note.file, content_type='application/octet-stream')
-            response['Content-Disposition'] = f'attachment; filename="{note.file.name}"'
+            response = FileResponse(note.file, as_attachment=True, filename=note.file.name)
             return response
         elif note.file_url:
             note.increment_downloads()
+            return Response({'file_url': note.file_url})
+        return Response({'error': 'No file available'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['get'])
+    def preview(self, request, pk=None):
+        note = self.get_object()
+        if note.file:
+            import mimetypes
+            content_type, _ = mimetypes.guess_type(note.file.name)
+            if not content_type:
+                content_type = 'application/octet-stream'
+            response = FileResponse(note.file, content_type=content_type)
+            response['Content-Disposition'] = f'inline; filename="{note.file.name}"'
+            return response
+        elif note.file_url:
+            return Response({'file_url': note.file_url})
+        return Response({'error': 'No file available'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['get'])
+    def preview(self, request, pk=None):
+        note = self.get_object()
+        if note.file:
+            import mimetypes
+            content_type, _ = mimetypes.guess_type(note.file.name)
+            if not content_type:
+                content_type = 'application/octet-stream'
+            response = FileResponse(note.file, content_type=content_type)
+            response['Content-Disposition'] = f'inline; filename="{note.file.name}"'
+            return response
+        elif note.file_url:
             return Response({'file_url': note.file_url})
         return Response({'error': 'No file available'}, status=status.HTTP_404_NOT_FOUND)
 
