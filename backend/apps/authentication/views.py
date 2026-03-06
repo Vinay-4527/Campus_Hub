@@ -62,11 +62,13 @@ class UserLoginView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-def user_logout_view(request):
-    if request.method == "POST":
+class UserLogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Clear any server-side session data if present; JWT remains stateless
         logout(request)
-        return JsonResponse({"message": "Logout successful"}, status=200)
-    return JsonResponse({"detail": "Method not allowed"}, status=405)
+        return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
 
 
 class UserProfileView(APIView):

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Event, EventRegistration
+from .models import Event, EventRegistration, EventProposal
 from apps.authentication.serializers import UserProfileSerializer
 
 class EventRegistrationSerializer(serializers.ModelSerializer):
@@ -44,4 +44,24 @@ class EventUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'title', 'description', 'event_type', 'location',
             'start_date', 'end_date', 'max_participants', 'status'
+        ]
+
+
+class EventProposalSerializer(serializers.ModelSerializer):
+    proposed_by = UserProfileSerializer(read_only=True)
+    reviewed_by = UserProfileSerializer(read_only=True)
+    proposal_status_display = serializers.CharField(source='get_proposal_status_display', read_only=True)
+
+    class Meta:
+        model = EventProposal
+        fields = [
+            'id', 'title', 'description', 'event_type', 'location',
+            'start_date', 'end_date', 'max_participants', 'status',
+            'proposal_status', 'proposal_status_display', 'admin_comment',
+            'proposed_by', 'reviewed_by', 'created_event',
+            'created_at', 'updated_at', 'reviewed_at'
+        ]
+        read_only_fields = [
+            'proposal_status', 'admin_comment', 'proposed_by', 'reviewed_by',
+            'created_event', 'created_at', 'updated_at', 'reviewed_at'
         ]

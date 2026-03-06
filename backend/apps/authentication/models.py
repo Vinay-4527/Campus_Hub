@@ -17,6 +17,7 @@ class User(AbstractUser):
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     profile_picture = models.URLField(blank=True, null=True)
     is_verified = models.BooleanField(default=False)
+    is_class_representative = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -39,6 +40,10 @@ class User(AbstractUser):
     @property
     def is_faculty(self):
         return self.role == 'faculty'
+
+    @property
+    def can_propose_events(self):
+        return self.role == 'student' and self.is_class_representative
 
 
 class AdminApprovalRequest(models.Model):

@@ -3,12 +3,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
-from .models import Event, EventRegistration
+from .models import Event, EventRegistration, EventProposal
 from .serializers import (
     EventSerializer,
     EventCreateSerializer,
     EventUpdateSerializer,
-    EventRegistrationSerializer
+    EventRegistrationSerializer,
+    EventProposalSerializer
 )
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -41,6 +42,73 @@ class EventViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(organizer=self.request.user)
+
+    @action(detail=False, methods=['get', 'post'])
+    def proposals(self, request):
+        user = request.user
+
+        if request.method.lower() == 'post':
+            if getattr(user, 'role', None) != 'student' or not getattr(user, 'is_class_representative', False):
+                return Response(
+                    {'detail': 'Only class representatives can submit event proposals.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            serializer = EventProposalSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(proposed_by=user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        if getattr(user, 'role', None) == 'admin':
+            queryset = EventProposal.objects.all()
+        else:
+            queryset = EventProposal.objects.filter(proposed_by=user)
+        serializer = EventProposalSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path=r'proposals/(?P<proposal_id>[^/.]+)/review')
+    def review_proposal(self, request, proposal_id=None):
+        if getattr(request.user, 'role', None) != 'admin':
+            return Response({'detail': 'Only admins can review proposals.'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            proposal = EventProposal.objects.get(pk=proposal_id)
+        except EventProposal.DoesNotExist:
+            return Response({'detail': 'Proposal not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if proposal.proposal_status != 'pending':
+            return Response({'detail': 'This proposal has already been reviewed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        review_action = request.data.get('action')
+        admin_comment = request.data.get('admin_comment', '')
+        if review_action not in {'approve', 'reject'}:
+            return Response({'detail': 'action must be either approve or reject.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        proposal.reviewed_by = request.user
+        proposal.reviewed_at = timezone.now()
+        proposal.admin_comment = admin_comment
+
+        if review_action == 'approve':
+            created_event = Event.objects.create(
+                title=proposal.title,
+                description=proposal.description,
+                event_type=proposal.event_type,
+                location=proposal.location,
+                start_date=proposal.start_date,
+                end_date=proposal.end_date,
+                max_participants=proposal.max_participants,
+                status=proposal.status,
+                organizer=proposal.proposed_by
+            )
+            proposal.proposal_status = 'approved'
+            proposal.created_event = created_event
+        else:
+            proposal.proposal_status = 'rejected'
+
+        proposal.save(update_fields=[
+            'reviewed_by', 'reviewed_at', 'admin_comment', 'proposal_status', 'created_event'
+        ])
+        serializer = EventProposalSerializer(proposal)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def register(self, request, pk=None):

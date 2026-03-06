@@ -4,7 +4,7 @@ from apps.authentication.serializers import UserProfileSerializer
 
 class MessFeedbackSerializer(serializers.ModelSerializer):
     user = UserProfileSerializer(read_only=True)
-    rating_display = serializers.CharField(source='rating_display', read_only=True)
+    rating_display = serializers.CharField(read_only=True)
     
     class Meta:
         model = MessFeedback

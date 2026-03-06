@@ -76,6 +76,56 @@ class Event(models.Model):
         now = timezone.now()
         return self.start_date <= now <= self.end_date
 
+
+class EventProposal(models.Model):
+    PROPOSAL_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    event_type = models.CharField(max_length=20, choices=Event.EVENT_TYPE_CHOICES, default='other')
+    location = models.CharField(max_length=200)
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    max_participants = models.PositiveIntegerField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=Event.STATUS_CHOICES, default='upcoming')
+    proposal_status = models.CharField(max_length=20, choices=PROPOSAL_STATUS_CHOICES, default='pending')
+    admin_comment = models.TextField(blank=True)
+
+    proposed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='event_proposals'
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='reviewed_event_proposals',
+        null=True,
+        blank=True
+    )
+    created_event = models.OneToOneField(
+        'events.Event',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='source_proposal'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Event Proposal'
+        verbose_name_plural = 'Event Proposals'
+
+    def __str__(self):
+        return f"{self.title} ({self.get_proposal_status_display()})"
+
 class EventRegistration(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

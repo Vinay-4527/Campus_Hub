@@ -32,6 +32,7 @@ interface Event {
   status: string;
   status_display: string;
   organizer: {
+    username: string;
     first_name: string;
     last_name: string;
   };
@@ -43,10 +44,35 @@ interface Event {
   updated_at: string;
 }
 
+interface EventProposal {
+  id: number;
+  title: string;
+  description: string;
+  event_type: string;
+  location: string;
+  start_date: string;
+  end_date: string;
+  max_participants: number;
+  status: string;
+  proposal_status: 'pending' | 'approved' | 'rejected';
+  proposal_status_display: string;
+  admin_comment: string;
+  proposed_by: {
+    username: string;
+    first_name: string;
+    last_name: string;
+  };
+  created_event: number | null;
+  created_at: string;
+}
+
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [proposals, setProposals] = useState<EventProposal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [proposalLoading, setProposalLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isClassRepresentative, setIsClassRepresentative] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -66,6 +92,12 @@ export default function EventsPage() {
     fetchEvents();
   }, []);
 
+  useEffect(() => {
+    if (userRole === 'admin') {
+      fetchProposals();
+    }
+  }, [userRole]);
+
   const fetchUserRole = async () => {
     try {
       const token = localStorage.getItem('accessToken');
@@ -76,6 +108,7 @@ export default function EventsPage() {
       if (res.ok) {
         const data = await res.json();
         setUserRole(data.role || null);
+        setIsClassRepresentative(Boolean(data.is_class_representative));
       }
     } catch (_) {}
   };
@@ -107,7 +140,11 @@ export default function EventsPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:8000/api/events/events/', {
+      const canCreateEvent = userRole && userRole !== 'student';
+      const endpoint = canCreateEvent
+        ? 'http://localhost:8000/api/events/events/'
+        : 'http://localhost:8000/api/events/events/proposals/';
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -126,14 +163,69 @@ export default function EventsPage() {
           end_date: '',
           max_participants: 50
         });
+        if (canCreateEvent) {
+          fetchEvents();
+          alert('Event created successfully');
+        } else {
+          fetchProposals();
+          alert('Event proposal submitted to admin for review');
+        }
+      } else {
+        const errorData = await response.json();
+        alert('Submission failed: ' + JSON.stringify(errorData));
+      }
+    } catch (error) {
+      console.error('Error submitting event form:', error);
+      alert('Submission failed');
+    }
+  };
+
+  const fetchProposals = async () => {
+    setProposalLoading(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('http://localhost:8000/api/events/events/proposals/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProposals(Array.isArray(data) ? data as EventProposal[] : []);
+      }
+    } catch (error) {
+      console.error('Error fetching proposals:', error);
+    } finally {
+      setProposalLoading(false);
+    }
+  };
+
+  const handleReviewProposal = async (proposalId: number, action: 'approve' | 'reject') => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const adminComment = window.prompt(
+        action === 'approve' ? 'Optional approval note:' : 'Reason for rejection (optional):',
+        ''
+      ) || '';
+      const response = await fetch(`http://localhost:8000/api/events/events/proposals/${proposalId}/review/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action, admin_comment: adminComment })
+      });
+      if (response.ok) {
+        fetchProposals();
         fetchEvents();
       } else {
         const errorData = await response.json();
-        alert('Event creation failed: ' + JSON.stringify(errorData));
+        alert('Proposal review failed: ' + JSON.stringify(errorData));
       }
     } catch (error) {
-      console.error('Error creating event:', error);
-      alert('Event creation failed');
+      console.error('Error reviewing proposal:', error);
+      alert('Proposal review failed');
     }
   };
 
@@ -218,6 +310,10 @@ export default function EventsPage() {
     }
   };
 
+  const canCreateEvent = Boolean(userRole && userRole !== 'student');
+  const canProposeEvent = userRole === 'student' && isClassRepresentative;
+  const canSubmitEvent = canCreateEvent || canProposeEvent;
+
   const getEventTypeColor = (type: string) => {
     switch (type) {
       case 'academic': return 'bg-purple-100 text-purple-800';
@@ -291,17 +387,66 @@ export default function EventsPage() {
               </option>
             ))}
           </select>
-          {userRole && userRole !== 'student' && (
+          {canSubmitEvent && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus className="h-4 w-4" />
-              Create Event
+              {canCreateEvent ? 'Create Event' : 'Propose Event'}
             </button>
           )}
         </div>
       </div>
+
+      {userRole === 'admin' && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">Pending Event Proposals</h2>
+          {proposalLoading ? (
+            <p className="text-sm text-gray-600">Loading proposals...</p>
+          ) : (
+            <div className="space-y-3">
+              {proposals.filter((proposal) => proposal.proposal_status === 'pending').length === 0 && (
+                <p className="text-sm text-gray-600">No pending proposals.</p>
+              )}
+              {proposals
+                .filter((proposal) => proposal.proposal_status === 'pending')
+                .map((proposal) => (
+                  <Card key={proposal.id}>
+                    <CardContent className="py-4">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-gray-900">{proposal.title}</p>
+                          <span className="text-xs text-gray-500">
+                            {new Date(proposal.start_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 line-clamp-2">{proposal.description}</p>
+                        <p className="text-xs text-gray-500">
+                          Proposed by {proposal.proposed_by.first_name} {proposal.proposed_by.last_name} ({proposal.proposed_by.username})
+                        </p>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={() => handleReviewProposal(proposal.id, 'approve')}
+                            className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleReviewProposal(proposal.id, 'reject')}
+                            className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Events Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -384,14 +529,16 @@ export default function EventsPage() {
       </div>
 
       {/* Create Event Modal */}
-      {userRole && userRole !== 'student' && showCreateModal && (
+      {canSubmitEvent && showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto"
           >
-            <h3 className="text-lg font-semibold mb-4">Create New Event</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              {canCreateEvent ? 'Create New Event' : 'Propose New Event'}
+            </h3>
             <form onSubmit={handleCreateEvent} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -495,7 +642,7 @@ export default function EventsPage() {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  Create Event
+                  {canCreateEvent ? 'Create Event' : 'Submit Proposal'}
                 </button>
                 <button
                   type="button"
