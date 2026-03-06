@@ -105,10 +105,10 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="mb-8"
+        className="mb-8 bg-[#5bccf6] border border-[#030e12]/15 rounded-xl shadow-sm px-4 py-3 sm:px-5 sm:py-4"
       >
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
-        <p className="text-gray-600">Manage your account preferences and settings</p>
+        <h1 className="text-3xl font-bold text-[#030e12] mb-2">Settings</h1>
+        <p className="text-[#030e12]/85">Manage your account preferences and settings</p>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -244,12 +244,13 @@ export default function SettingsPage() {
               </button>
 
               {showChangePassword && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-lg font-semibold mb-4">Change Password</h3>
-                    {changeError && <p className="mb-3 text-sm text-red-600">{changeError}</p>}
-                    <form onSubmit={submitPasswordChange} className="space-y-4">
-                      <div>
+                <div className="form-modal-overlay">
+                  <div className="form-modal-shell sm:max-w-md">
+                    <h3 className="form-modal-header text-lg font-semibold p-4 sm:p-6 pb-3">Change Password</h3>
+                    <form onSubmit={submitPasswordChange} className="flex-1 flex flex-col min-h-0">
+                      <div className="form-modal-body p-4 sm:p-6 pb-28 sm:pb-24 space-y-4">
+                        {changeError && <p className="text-sm text-red-600">{changeError}</p>}
+                        <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
                         <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                       </div>
@@ -261,7 +262,8 @@ export default function SettingsPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
                         <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
                       </div>
-                      <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                      </div>
+                      <div className="form-modal-footer p-4 sm:p-6 pb-[max(env(safe-area-inset-bottom),1rem)] flex flex-col sm:flex-row gap-2">
                         <button type="button" onClick={() => setShowChangePassword(false)} className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
                         <button type="submit" disabled={changing} className="w-full sm:flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60">{changing ? 'Saving...' : 'Update Password'}</button>
                       </div>

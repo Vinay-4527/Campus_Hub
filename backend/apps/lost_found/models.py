@@ -62,3 +62,12 @@ class LostFoundItem(models.Model):
     @property
     def is_claimed(self):
         return self.status in ['claimed', 'returned']
+
+
+class LostFoundItemImage(models.Model):
+    item = models.ForeignKey(LostFoundItem, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='lost_found/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']

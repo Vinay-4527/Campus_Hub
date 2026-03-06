@@ -20,6 +20,87 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.form-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 0;
+  overflow-y: auto;
+  background: rgb(0 0 0 / 0.25);
+  backdrop-filter: blur(4px);
+  height: 100dvh;
+  min-height: 100svh;
+}
+
+.form-modal-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.form-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  flex-shrink: 0;
+  background: #fff;
+  border-bottom: 1px solid rgb(243 244 246);
+}
+
+.form-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.form-modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  flex-shrink: 0;
+  background: #fff;
+  border-top: 1px solid rgb(243 244 246);
+}
+
+@media (min-width: 640px) {
+  .form-modal-overlay {
+    align-items: stretch;
+    padding: 1rem;
+  }
+
+  .form-modal-shell {
+    height: 100%;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.75rem;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+}
+
+.section-heading-card {
+  background: #5bccf6;
+  border: 1px solid rgb(3 14 18 / 0.12);
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  box-shadow: 0 6px 14px -8px rgb(3 14 18 / 0.35);
+}
+
+@media (min-width: 640px) {
+  .section-heading-card {
+    border-radius: 1rem;
+    padding: 1rem 1.25rem;
+  }
+}
+
 /* Prevent Next.js dev tools portal from intercepting interactions in dev. */
 nextjs-portal {
   pointer-events: none !important;

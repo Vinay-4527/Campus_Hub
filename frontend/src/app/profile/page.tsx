@@ -229,9 +229,10 @@ export default function ProfilePage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
+          className="bg-[#5bccf6] border border-[#030e12]/15 rounded-xl shadow-sm px-4 py-3 sm:px-5 sm:py-4"
         >
-          <h1 className="text-3xl font-bold text-gray-900">Profile & Settings</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-[#030e12]">Profile & Settings</h1>
+          <p className="text-[#030e12]/85 mt-2">
             Manage your account information and preferences.
           </p>
         </motion.div>
@@ -462,15 +463,16 @@ export default function ProfilePage() {
 
       {/* Change Password Modal */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="form-modal-overlay">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg p-6 w-full max-w-md mx-4"
+            className="form-modal-shell sm:max-w-md"
           >
-            <h3 className="text-lg font-semibold mb-4">Change Password</h3>
-            <form onSubmit={(e) => { e.preventDefault(); handleChangePassword(); }} className="space-y-4">
-              <div>
+            <h3 className="form-modal-header text-lg font-semibold p-4 sm:p-6 pb-3">Change Password</h3>
+            <form onSubmit={(e) => { e.preventDefault(); handleChangePassword(); }} className="flex-1 flex flex-col min-h-0">
+              <div className="form-modal-body p-4 sm:p-6 pb-28 sm:pb-24 space-y-4">
+                <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Current Password
                 </label>
@@ -536,7 +538,9 @@ export default function ProfilePage() {
                 </div>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              </div>
+
+              <div className="form-modal-footer p-4 sm:p-6 pb-[max(env(safe-area-inset-bottom),1rem)] flex flex-col sm:flex-row gap-3">
                 <button
                   type="submit"
                   className="w-full sm:flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"

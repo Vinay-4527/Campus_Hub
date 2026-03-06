@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Plus, Filter, MapPin, Clock, User, Tag, Eye, MessageSquare, Copy } from 'lucide-react';
+import { Search, Plus, Filter, MapPin, Clock, User, Tag, Eye, MessageSquare, Copy, Trash2 } from 'lucide-react';
 
 interface LostFoundItem {
   id: number;
@@ -15,6 +15,7 @@ interface LostFoundItem {
   primary_phone: string;
   secondary_phone: string;
   image: string | null;
+  image_urls?: string[];
   reported_by: {
     first_name: string;
     last_name: string;
@@ -38,7 +39,7 @@ export default function LostFoundPage() {
     location: '',
     primary_phone: '',
     secondary_phone: '',
-    image: null as File | null
+    images: [] as File[]
   });
   const [phoneErrors, setPhoneErrors] = useState({
     primary_phone: '',
@@ -51,8 +52,9 @@ export default function LostFoundPage() {
     contact: '',
     proofFile: null as File | null,
   });
-  const [currentUser, setCurrentUser] = useState<{ id: number; email: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role?: string } | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<{ src: string; title: string } | null>(null);
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -92,7 +94,7 @@ export default function LostFoundPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setCurrentUser({ id: data.id, email: data.email });
+        setCurrentUser({ id: data.id, email: data.email, role: data.role });
       }
     } catch (_) {}
   };
@@ -117,9 +119,11 @@ export default function LostFoundPage() {
       formData.append('location', newItem.location);
       formData.append('primary_phone', newItem.primary_phone);
       formData.append('secondary_phone', newItem.secondary_phone);
-      if (newItem.image) {
-        formData.append('image', newItem.image);
+      if (newItem.images.length > 5) {
+        alert('You can upload a maximum of 5 images.');
+        return;
       }
+      newItem.images.forEach((file) => formData.append('images', file));
       const response = await fetch('http://localhost:8000/api/lost-found/items/', {
         method: 'POST',
         headers: {
@@ -137,7 +141,7 @@ export default function LostFoundPage() {
           location: '',
           primary_phone: '',
           secondary_phone: '',
-          image: null
+          images: []
         });
         setPhoneErrors({ primary_phone: '', secondary_phone: '' });
         fetchItems();
@@ -191,6 +195,34 @@ export default function LostFoundPage() {
       }
     } catch (error) {
       console.error('Error marking item as found:', error);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: number, title: string) => {
+    const firstConfirm = window.confirm(`Delete item "${title}"?`);
+    if (!firstConfirm) return;
+    const secondConfirm = window.confirm('This action is permanent. Are you absolutely sure?');
+    if (!secondConfirm) return;
+    try {
+      setDeletingItemId(itemId);
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`http://localhost:8000/api/lost-found/items/${itemId}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      });
+      if (response.ok || response.status === 204) {
+        fetchItems();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.detail || 'Failed to delete item.');
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      alert('Failed to delete item.');
+    } finally {
+      setDeletingItemId(null);
     }
   };
 
@@ -272,7 +304,7 @@ export default function LostFoundPage() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading items...</p>
@@ -283,87 +315,104 @@ export default function LostFoundPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6 sm:mb-8">
+      <div className="sticky top-0 z-30 py-3 mb-6 sm:mb-8 bg-white/45 backdrop-blur-md">
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
+          className="bg-[#5bccf6] border border-[#030e12]/15 rounded-xl shadow-sm px-4 py-3 sm:px-5 sm:py-4"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Lost & Found</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#030e12]">Lost & Found</h1>
+          <p className="text-sm sm:text-base text-[#030e12]/85 mt-2">
             Report lost items or help others find their belongings
           </p>
         </motion.div>
-      </div>
 
-      {/* Search and Filter Bar */}
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search items..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">All Status</option>
-              <option value="lost">Lost</option>
-              <option value="found">Found</option>
-              <option value="claimed">Claimed</option>
-            </select>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="w-full sm:w-auto justify-center flex items-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Report Item
-            </button>
+        {/* Search and Filter Bar */}
+        <div className="mt-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search items..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="lost">Lost</option>
+                <option value="found">Found</option>
+                <option value="claimed">Claimed</option>
+              </select>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="w-full sm:w-auto justify-center flex items-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Report Item
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {filteredItems.map((item) => (
+        {filteredItems.map((item) => {
+          const itemImages = item.image_urls && item.image_urls.length > 0
+            ? item.image_urls
+            : item.image
+              ? [item.image]
+              : [];
+          return (
           <Card key={item.id} className="hover:shadow-md transition-all duration-200 border border-slate-200 rounded-2xl bg-white">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl font-semibold text-slate-900 line-clamp-1">{item.item_name}</CardTitle>
-                <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
+            {itemImages.length > 0 && (
+              <div className="relative">
+                <img
+                  src={itemImages[0]}
+                  alt={item.item_name}
+                  className="w-full h-72 sm:h-80 object-cover rounded-t-2xl"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFullscreenImage({ src: itemImages[0], title: item.item_name })}
+                  className="absolute top-3 right-3 p-2 text-xs bg-black/70 text-white rounded-lg hover:bg-black/80"
+                  title="View fullscreen"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+                {itemImages.length > 1 && (
+                  <span className="absolute bottom-3 right-3 px-2 py-1 text-xs rounded-full bg-black/70 text-white">
+                    +{itemImages.length - 1}
+                  </span>
+                )}
+                <span className={`absolute top-3 left-3 px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
                   {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                 </span>
               </div>
+            )}
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-semibold text-slate-900 line-clamp-1">{item.item_name}</CardTitle>
+                {itemImages.length === 0 && (
+                  <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
+                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                  </span>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              {item.image && (
-                <div className="relative mb-4">
-                  <img
-                    src={item.image}
-                    alt={item.item_name}
-                    className="w-full h-40 object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setFullscreenImage({ src: item.image as string, title: item.item_name })}
-                    className="absolute top-2 right-2 p-2 text-xs bg-black/70 text-white rounded-lg hover:bg-black/80"
-                    title="View fullscreen"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-              <p className="text-gray-600 mb-4 text-sm sm:text-base">{item.description || 'No description provided.'}</p>
-              <div className="space-y-2.5 text-sm text-gray-600">
+              <p className="text-gray-600 mb-3 text-sm sm:text-base line-clamp-2">{item.description || 'No description provided.'}</p>
+              <div className="space-y-2 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-gray-500" />
                   {item.location}
@@ -422,19 +471,31 @@ export default function LostFoundPage() {
                     Already Claimed
                   </button>
                 )}
+                {currentUser?.role === 'admin' && (
+                  <button
+                    onClick={() => handleDeleteItem(item.id, item.item_name)}
+                    disabled={deletingItemId === item.id}
+                    className="w-full sm:w-auto px-4 py-2.5 border border-red-300 text-red-700 rounded-xl hover:bg-red-50 font-medium disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {deletingItemId === item.id ? 'Deleting...' : 'Delete'}
+                  </button>
+                )}
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       {/* Add Item Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Report Item</h2>
-            <form onSubmit={handleAddItem} className="space-y-4">
-              <div>
+        <div className="form-modal-overlay">
+          <div className="form-modal-shell sm:max-w-md">
+            <h2 className="form-modal-header text-xl font-bold p-4 sm:p-6 pb-3">Report Item</h2>
+            <form onSubmit={handleAddItem} className="flex-1 flex flex-col min-h-0">
+              <div className="form-modal-body p-4 sm:p-6 pb-28 sm:pb-24 space-y-4">
+                <div>
                 <label className="block text-sm font-medium mb-1">Item Name</label>
                 <input
                   type="text"
@@ -511,15 +572,26 @@ export default function LostFoundPage() {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Image (optional)</label>
+                <label className="block text-sm font-medium mb-1">Images (optional, max 5)</label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setNewItem({ ...newItem, image: e.target.files?.[0] || null })}
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 5) {
+                      alert('You can upload a maximum of 5 images.');
+                      return;
+                    }
+                    setNewItem({ ...newItem, images: files });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 />
+                <p className="mt-1 text-xs text-gray-500">{newItem.images.length}/5 selected</p>
               </div>
-              <div className="flex gap-2">
+              </div>
+
+              <div className="form-modal-footer p-4 sm:p-6 pb-[max(env(safe-area-inset-bottom),1rem)] flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
@@ -541,8 +613,8 @@ export default function LostFoundPage() {
 
       {/* Contact Owner Modal */}
       {contactModalItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/25 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md my-4 sm:my-0 max-h-[92vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Contact Owner</h2>
             <div className="space-y-3 text-sm text-gray-700">
               <div>
@@ -604,17 +676,18 @@ export default function LostFoundPage() {
 
       {/* Claim Request Modal */}
       {claimModalItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Claim This Item</h2>
+        <div className="form-modal-overlay">
+          <div className="form-modal-shell sm:max-w-md">
+            <h2 className="form-modal-header text-xl font-bold p-4 sm:p-6 pb-3">Claim This Item</h2>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleClaimItem(claimModalItem.id);
               }}
-              className="space-y-4"
+              className="flex-1 flex flex-col min-h-0"
             >
-              <div>
+              <div className="form-modal-body p-4 sm:p-6 pb-28 sm:pb-24 space-y-4">
+                <div>
                 <label className="block text-sm font-medium mb-1">Describe identifying details</label>
                 <textarea
                   value={claimForm.details}
@@ -646,7 +719,8 @@ export default function LostFoundPage() {
                   accept="image/*,application/pdf"
                 />
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              </div>
+              <div className="form-modal-footer p-4 sm:p-6 pb-[max(env(safe-area-inset-bottom),1rem)] flex flex-col sm:flex-row gap-2">
                 <button type="button" onClick={() => setClaimModalItem(null)} className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-lg">Cancel</button>
                 <button type="submit" className="w-full sm:flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Submit Claim</button>
               </div>

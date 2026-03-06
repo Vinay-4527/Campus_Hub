@@ -19,7 +19,7 @@ class Event(models.Model):
     ]
     
     title = models.CharField(max_length=200)
-    description = models.TextField()
+    description = models.TextField(blank=True)
     event_type = models.CharField(max_length=20, choices=EVENT_TYPE_CHOICES, default='other')
     location = models.CharField(max_length=200)
     start_date = models.DateTimeField()
@@ -86,7 +86,7 @@ class EventProposal(models.Model):
     ]
 
     title = models.CharField(max_length=200)
-    description = models.TextField()
+    description = models.TextField(blank=True)
     event_type = models.CharField(max_length=20, choices=Event.EVENT_TYPE_CHOICES, default='other')
     location = models.CharField(max_length=200)
     start_date = models.DateTimeField()
@@ -108,6 +108,13 @@ class EventProposal(models.Model):
         related_name='reviewed_event_proposals',
         null=True,
         blank=True
+    )
+    target_event = models.ForeignKey(
+        'events.Event',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='edit_proposals'
     )
     created_event = models.OneToOneField(
         'events.Event',
@@ -153,3 +160,21 @@ class EventRegistration(models.Model):
         self.event.current_participants = max(0, self.event.current_participants - 1)
         self.event.save()
         super().delete(*args, **kwargs)
+
+
+class EventImage(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='events/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+
+class EventProposalImage(models.Model):
+    proposal = models.ForeignKey(EventProposal, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='event_proposals/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']

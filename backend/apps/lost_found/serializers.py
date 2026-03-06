@@ -6,15 +6,32 @@ import re
 class LostFoundItemSerializer(serializers.ModelSerializer):
     reported_by = UserProfileSerializer(read_only=True)
     claimed_by = UserProfileSerializer(read_only=True)
+    image_urls = serializers.SerializerMethodField()
     
     class Meta:
         model = LostFoundItem
         fields = [
             'id', 'item_name', 'description', 'category', 'location',
-            'status', 'primary_phone', 'secondary_phone', 'image', 'reported_by', 'claimed_by',
+            'status', 'primary_phone', 'secondary_phone', 'image', 'image_urls', 'reported_by', 'claimed_by',
             'created_at', 'updated_at', 'claimed_at'
         ]
         read_only_fields = ['reported_by', 'claimed_by', 'created_at', 'updated_at', 'claimed_at']
+
+    def get_image_urls(self, obj):
+        urls = []
+        if obj.image:
+            urls.append(obj.image.url)
+        urls.extend([img.image.url for img in obj.images.all()])
+        deduped = []
+        seen = set()
+        for url in urls:
+            if url in seen:
+                continue
+            seen.add(url)
+            deduped.append(url)
+            if len(deduped) == 5:
+                break
+        return deduped
 
 class LostFoundItemCreateSerializer(serializers.ModelSerializer):
     primary_phone = serializers.CharField(required=True, allow_blank=False)

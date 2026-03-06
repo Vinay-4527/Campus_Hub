@@ -5,7 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Avg, Count, Q
 from django.utils import timezone
 from datetime import timedelta
-from .models import MessFeedback
+from .models import MessFeedback, MessFeedbackImage
 from .serializers import (
     MessFeedbackSerializer,
     MessFeedbackCreateSerializer,
@@ -22,10 +22,39 @@ class MessFeedbackViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'date', 'rating']
     ordering = ['-created_at']
 
+    def _extract_images(self, request):
+        primary_image = request.FILES.get('image')
+        extra_images = request.FILES.getlist('images')
+        total = (1 if primary_image else 0) + len(extra_images)
+        if total > 5:
+            return None, None, Response(
+                {'detail': 'Maximum 5 images are allowed.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return primary_image, extra_images, None
+
+    def _attach_feedback_images(self, feedback, extra_images):
+        files = list(extra_images or [])
+        if not feedback.image and files:
+            feedback.image = files.pop(0)
+            feedback.save(update_fields=['image'])
+        for file_obj in files:
+            MessFeedbackImage.objects.create(feedback=feedback, image=file_obj)
+
     def get_serializer_class(self):
         if self.action == 'create':
             return MessFeedbackCreateSerializer
         return MessFeedbackSerializer
+
+    def create(self, request, *args, **kwargs):
+        _, extra_images, image_error = self._extract_images(request)
+        if image_error:
+            return image_error
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        feedback = serializer.save(user=request.user)
+        self._attach_feedback_images(feedback, extra_images)
+        return Response(MessFeedbackSerializer(feedback, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -48,7 +77,8 @@ class MessFeedbackViewSet(viewsets.ModelViewSet):
         
         # Calculate stats by meal type
         stats = []
-        meal_types = ['breakfast', 'lunch', 'dinner', 'snack']
+        meal_choices = dict(MessFeedback.MEAL_CHOICES)
+        meal_types = [choice[0] for choice in MessFeedback.MEAL_CHOICES]
         
         for meal_type in meal_types:
             meal_feedbacks = queryset.filter(meal_type=meal_type)
@@ -61,6 +91,7 @@ class MessFeedbackViewSet(viewsets.ModelViewSet):
                 
                 stats.append({
                     'meal_type': meal_type,
+                    'meal_type_display': meal_choices.get(meal_type, meal_type),
                     'average_rating': round(avg_rating, 2),
                     'total_feedbacks': total_count,
                     'positive_feedbacks': positive_count,
@@ -94,7 +125,7 @@ class MessFeedbackViewSet(viewsets.ModelViewSet):
         }
         
         # Breakdown by meal type
-        for meal_type in ['breakfast', 'lunch', 'dinner', 'snack']:
+        for meal_type in [choice[0] for choice in MessFeedback.MEAL_CHOICES]:
             meal_feedbacks = queryset.filter(meal_type=meal_type)
             if meal_feedbacks.exists():
                 summary['by_meal_type'][meal_type] = {

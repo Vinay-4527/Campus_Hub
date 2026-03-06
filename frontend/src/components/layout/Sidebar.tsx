@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   Home, 
-  Search, 
+  Package, 
   Calendar, 
   FileText, 
   MessageSquare, 
@@ -20,7 +20,7 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
-  { name: 'Lost & Found', href: '/dashboard/lost-found', icon: Search },
+  { name: 'Lost & Found', href: '/dashboard/lost-found', icon: Package },
   { name: 'Events', href: '/dashboard/events', icon: Calendar },
   { name: 'Notes', href: '/dashboard/notes', icon: FileText },
   { name: 'Mess Feedback', href: '/dashboard/mess-feedback', icon: MessageSquare },
@@ -77,7 +77,7 @@ export default function Sidebar() {
       {/* Mobile sidebar */}
       <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
+        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-[#fcde67] border-r border-[#030e12]/15">
           <div className="flex h-16 items-center justify-between px-4">
             <Link
               href="/dashboard"
@@ -105,8 +105,8 @@ export default function Sidebar() {
                   href={item.href}
                   className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
                     isActive
-                      ? 'bg-blue-100 text-blue-900'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-white text-blue-900'
+                      : 'text-gray-700 hover:bg-white/70 hover:text-gray-900'
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
@@ -116,8 +116,8 @@ export default function Sidebar() {
               );
             })}
           </nav>
-          <div className="border-t border-gray-200 p-4">
-            <button onClick={handleLogout} className="flex w-full items-center px-2 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-md">
+          <div className="border-t border-[#030e12]/15 p-4">
+            <button onClick={handleLogout} className="flex w-full items-center px-2 py-2 text-sm font-medium text-gray-700 hover:bg-white/70 hover:text-gray-900 rounded-md">
               <LogOut className="mr-3 h-5 w-5" />
               Logout
             </button>
@@ -127,7 +127,7 @@ export default function Sidebar() {
 
       {/* Desktop sidebar */}
       <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${collapsed ? 'lg:w-20' : 'lg:w-64'}`}>
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
+        <div className="flex flex-col flex-grow bg-[#fcde67] border-r border-[#030e12]/15">
           <div className={`grid grid-cols-[1fr_auto] h-16 items-center ${collapsed ? 'px-2' : 'px-4'} w-full`}>
             <div className={`${collapsed ? 'flex justify-center' : 'flex items-center pl-2'}`}>
               <Link href="/dashboard" className={`flex items-center ${collapsed ? 'gap-0' : 'gap-2'} text-xl font-bold text-slate-900 hover:text-sky-700 transition-colors cursor-pointer`}>
@@ -140,7 +140,7 @@ export default function Sidebar() {
             <div className="pl-2 flex justify-end">
               <button
                 onClick={toggleCollapsed}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md border border-gray-200"
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-md border border-[#030e12]/20 bg-white/60"
                 aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               >
                 {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -156,8 +156,8 @@ export default function Sidebar() {
                   href={item.href}
                   className={`group flex items-center ${collapsed ? 'justify-center' : ''} px-2 py-2 text-sm font-medium rounded-md ${
                     isActive
-                      ? 'bg-blue-100 text-blue-900'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-white text-blue-900'
+                      : 'text-gray-700 hover:bg-white/70 hover:text-gray-900'
                   }`}
                 >
                   <item.icon className={`${collapsed ? '' : 'mr-3'} h-5 w-5`} />
@@ -166,8 +166,8 @@ export default function Sidebar() {
               );
             })}
           </nav>
-          <div className="border-t border-gray-200 p-4">
-            <button onClick={handleLogout} className="flex w-full items-center px-2 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-md">
+          <div className="border-t border-[#030e12]/15 p-4">
+            <button onClick={handleLogout} className="flex w-full items-center px-2 py-2 text-sm font-medium text-gray-700 hover:bg-white/70 hover:text-gray-900 rounded-md">
               <LogOut className={`${collapsed ? '' : 'mr-3'} h-5 w-5`} />
               {!collapsed && 'Logout'}
             </button>
@@ -179,7 +179,7 @@ export default function Sidebar() {
       <div className="lg:hidden">
         <button
           onClick={() => setSidebarOpen(true)}
-          className="fixed top-4 left-4 z-40 p-2 text-gray-400 hover:text-gray-600"
+          className="fixed top-4 left-4 z-40 p-2 text-gray-500 hover:text-gray-700"
         >
           <Menu className="h-6 w-6" />
         </button>

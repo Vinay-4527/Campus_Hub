@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
-from .models import LostFoundItem
+from .models import LostFoundItem, LostFoundItemImage
 from .serializers import (
     LostFoundItemSerializer,
     LostFoundItemCreateSerializer,
@@ -20,12 +20,52 @@ class LostFoundItemViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'updated_at']
     ordering = ['-created_at']
 
+    def _extract_images(self, request):
+        primary_image = request.FILES.get('image')
+        extra_images = request.FILES.getlist('images')
+        total = (1 if primary_image else 0) + len(extra_images)
+        if total > 5:
+            return None, None, Response(
+                {'detail': 'Maximum 5 images are allowed.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return primary_image, extra_images, None
+
+    def _attach_item_images(self, item, extra_images):
+        files = list(extra_images or [])
+        if not item.image and files:
+            item.image = files.pop(0)
+            item.save(update_fields=['image'])
+        for file_obj in files:
+            LostFoundItemImage.objects.create(item=item, image=file_obj)
+
     def get_serializer_class(self):
         if self.action == 'create':
             return LostFoundItemCreateSerializer
         elif self.action in ['update', 'partial_update']:
             return LostFoundItemUpdateSerializer
         return LostFoundItemSerializer
+
+    def create(self, request, *args, **kwargs):
+        _, extra_images, image_error = self._extract_images(request)
+        if image_error:
+            return image_error
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        item = serializer.save(reported_by=self.request.user, status='lost')
+        self._attach_item_images(item, extra_images)
+        return Response(LostFoundItemSerializer(item, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        item = self.get_object()
+        is_admin = getattr(request.user, 'role', None) == 'admin'
+        is_owner = item.reported_by_id == request.user.id
+        if not (is_admin or is_owner):
+            return Response(
+                {'detail': 'Only the reporter or admin can delete this item.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(reported_by=self.request.user, status='lost')

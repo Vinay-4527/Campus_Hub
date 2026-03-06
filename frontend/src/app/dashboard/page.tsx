@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading dashboard...</p>
@@ -171,23 +171,31 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="mb-8 sticky top-0 z-10 bg-gray-50 py-3 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
+      <div className="mb-8 sticky top-0 z-10 bg-white/45 backdrop-blur-md py-3">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="flex items-start justify-between"
+          className="bg-[#5bccf6] border border-[#030e12]/15 rounded-xl shadow-sm px-4 py-3 sm:px-5 sm:py-4 flex items-start justify-between"
         >
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-3xl font-bold text-[#030e12]">Dashboard</h1>
+            <p className="text-[#030e12]/85 mt-2">
             Welcome back, {user.first_name} {user.last_name}! Here&apos;s what&apos;s happening on campus.
             </p>
             <div className="mt-4 flex items-center space-x-4">
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
               {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
               </span>
-              <span className="text-sm text-gray-500">{user.student_id || user.email}</span>
+              <span
+                className={`text-sm ${
+                  user.role === 'admin'
+                    ? 'inline-flex items-center px-3 py-1 rounded-full font-medium bg-blue-100 text-blue-800'
+                    : 'text-gray-500'
+                }`}
+              >
+                {user.student_id || user.email}
+              </span>
             </div>
           </div>
           

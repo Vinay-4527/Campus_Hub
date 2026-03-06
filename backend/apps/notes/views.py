@@ -37,6 +37,17 @@ class NoteViewSet(viewsets.ModelViewSet):
             return Note.objects.all()
         return queryset
 
+    def destroy(self, request, *args, **kwargs):
+        note = self.get_object()
+        is_admin = getattr(request.user, 'role', None) == 'admin'
+        is_owner = note.uploaded_by_id == request.user.id
+        if not (is_admin or is_owner):
+            return Response(
+                {'detail': 'Only the uploader or admin can delete this note.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=True, methods=['get'])
     def download(self, request, pk=None):
         note = self.get_object()

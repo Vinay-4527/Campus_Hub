@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Star, TrendingUp, Users, MessageSquare, Plus, BarChart3 } from 'lucide-react';
@@ -8,9 +8,15 @@ import { Star, TrendingUp, Users, MessageSquare, Plus, BarChart3 } from 'lucide-
 interface MessFeedback {
   id: number;
   meal_type: string;
+  meal_type_display: string;
+  meal_subtype: string;
+  meal_subtype_custom: string;
+  meal_subtype_display: string;
   rating: number;
   rating_display: string;
   comments: string;
+  image: string | null;
+  image_urls?: string[];
   date: string;
   created_at: string;
   user: {
@@ -21,6 +27,7 @@ interface MessFeedback {
 
 interface FeedbackStats {
   meal_type: string;
+  meal_type_display: string;
   average_rating: number;
   total_feedbacks: number;
   positive_feedbacks: number;
@@ -32,21 +39,62 @@ export default function MessFeedbackPage() {
   const [stats, setStats] = useState<FeedbackStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const addFeedbackModalRef = useRef<HTMLDivElement | null>(null);
   const [newFeedback, setNewFeedback] = useState({
-    meal_type: 'lunch',
+    meal_type: 'breakfast',
+    meal_subtype: 'tiffins',
+    meal_subtype_custom: '',
     rating: 5,
-    comments: ''
+    comments: '',
+    images: [] as File[],
   });
+
+  const mealSubtypeOptions: Record<string, { value: string; label: string }[]> = {
+    breakfast: [
+      { value: 'tiffins', label: 'Tiffins' },
+      { value: 'beverages', label: 'Beverages' },
+      { value: 'other', label: 'Other' },
+    ],
+    lunch: [
+      { value: 'rice', label: 'Rice' },
+      { value: 'roti', label: 'Roti' },
+      { value: 'curry', label: 'Curry' },
+      { value: 'dal', label: 'Dal' },
+      { value: 'other', label: 'Other' },
+    ],
+    dinner: [
+      { value: 'rice', label: 'Rice' },
+      { value: 'roti', label: 'Roti' },
+      { value: 'curry', label: 'Curry' },
+      { value: 'dal', label: 'Dal' },
+      { value: 'other', label: 'Other' },
+    ],
+    snack: [
+      { value: 'tea', label: 'Tea' },
+      { value: 'coffee', label: 'Coffee' },
+      { value: 'fried', label: 'Fried' },
+      { value: 'bakery', label: 'Bakery' },
+      { value: 'other', label: 'Other' },
+    ],
+  };
 
   useEffect(() => {
     fetchFeedbacks();
     fetchStats();
   }, []);
 
+  useEffect(() => {
+    if (showAddModal) {
+      requestAnimationFrame(() => {
+        addFeedbackModalRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+      });
+    }
+  }, [showAddModal]);
+
   const fetchFeedbacks = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:8000/api/mess-feedback/feedbacks/', {
+      const response = await fetch('http://localhost:8000/api/mess-feedback/feedbacks/today_feedbacks/', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -70,7 +118,7 @@ export default function MessFeedbackPage() {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:8000/api/mess-feedback/feedbacks/stats/', {
+      const response = await fetch('http://localhost:8000/api/mess-feedback/feedbacks/stats/?days=0', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -93,21 +141,34 @@ export default function MessFeedbackPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('accessToken');
+      const formData = new FormData();
+      formData.append('meal_type', newFeedback.meal_type);
+      formData.append('meal_subtype', newFeedback.meal_subtype);
+      formData.append('meal_subtype_custom', newFeedback.meal_subtype_custom);
+      formData.append('rating', String(newFeedback.rating));
+      formData.append('comments', newFeedback.comments);
+      if (newFeedback.images.length > 5) {
+        alert('You can upload a maximum of 5 images.');
+        return;
+      }
+      newFeedback.images.forEach((file) => formData.append('images', file));
       const response = await fetch('http://localhost:8000/api/mess-feedback/feedbacks/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newFeedback)
+        body: formData
       });
       
       if (response.ok) {
         setShowAddModal(false);
         setNewFeedback({
-          meal_type: 'lunch',
+          meal_type: 'breakfast',
+          meal_subtype: 'tiffins',
+          meal_subtype_custom: '',
           rating: 5,
-          comments: ''
+          comments: '',
+          images: [],
         });
         fetchFeedbacks();
         fetchStats();
@@ -125,7 +186,8 @@ export default function MessFeedbackPage() {
 
   const getMealTypeColor = (mealType: string) => {
     switch (mealType) {
-      case 'breakfast': return 'bg-orange-100 text-orange-800';
+      case 'breakfast':
+        return 'bg-orange-100 text-orange-800';
       case 'lunch': return 'bg-blue-100 text-blue-800';
       case 'dinner': return 'bg-purple-100 text-purple-800';
       case 'snack': return 'bg-green-100 text-green-800';
@@ -133,9 +195,15 @@ export default function MessFeedbackPage() {
     }
   };
 
+  const getImageUrl = (url: string) => (
+    url.startsWith('http://') || url.startsWith('https://')
+      ? url
+      : `http://localhost:8000${url}`
+  );
+
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading feedback...</p>
@@ -146,18 +214,31 @@ export default function MessFeedbackPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-8">
+      <div className="sticky top-0 z-30 py-3 mb-8 bg-white/45 backdrop-blur-md">
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
+          className="bg-[#5bccf6] border border-[#030e12]/15 rounded-xl shadow-sm px-4 py-3 sm:px-5 sm:py-4"
         >
-          <h1 className="text-3xl font-bold text-gray-900">Mess Feedback</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-[#030e12]">Mess Feedback</h1>
+          <p className="text-[#030e12]/85 mt-2">
             Share your dining experience and help improve our mess services
           </p>
         </motion.div>
+
+        {/* Action Bar */}
+        <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <h2 className="text-xl font-semibold text-gray-900">Today's Feedback</h2>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Feedback
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -166,7 +247,7 @@ export default function MessFeedbackPage() {
           <Card key={stat.meal_type} className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
-                {stat.meal_type.charAt(0).toUpperCase() + stat.meal_type.slice(1)}
+                {stat.meal_type_display}
               </CardTitle>
               <div className={`p-2 rounded-lg ${getMealTypeColor(stat.meal_type)}`}>
                 <BarChart3 className="h-4 w-4" />
@@ -182,28 +263,45 @@ export default function MessFeedbackPage() {
         ))}
       </div>
 
-      {/* Action Bar */}
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <h2 className="text-xl font-semibold text-gray-900">Recent Feedback</h2>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Feedback
-        </button>
-      </div>
-
       {/* Feedback List */}
       <div className="space-y-4">
-        {feedbacks.map((feedback) => (
-          <Card key={feedback.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
+        {feedbacks.length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-sm text-gray-600">
+              No feedback submitted for today yet.
+            </CardContent>
+          </Card>
+        )}
+        {feedbacks.map((feedback) => {
+          const feedbackImages = feedback.image_urls && feedback.image_urls.length > 0
+            ? feedback.image_urls
+            : feedback.image
+              ? [feedback.image]
+              : [];
+          return (
+          <Card key={feedback.id} className="hover:shadow-md transition-shadow overflow-hidden">
+            {feedbackImages.length > 0 && (
+              <div className="relative">
+                <img
+                  src={getImageUrl(feedbackImages[0])}
+                  alt="Feedback upload"
+                  className="w-full h-72 sm:h-80 object-cover"
+                />
+                {feedbackImages.length > 1 && (
+                  <span className="absolute bottom-3 right-3 px-2 py-1 text-xs rounded-full bg-black/70 text-white">
+                    +{feedbackImages.length - 1}
+                  </span>
+                )}
+              </div>
+            )}
+            <CardContent className="p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getMealTypeColor(feedback.meal_type)}`}>
-                      {feedback.meal_type.charAt(0).toUpperCase() + feedback.meal_type.slice(1)}
+                      {feedback.meal_subtype_display
+                        ? `${feedback.meal_type_display} - ${feedback.meal_subtype_display}`
+                        : feedback.meal_type_display}
                     </span>
                     <div className="flex items-center">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -233,20 +331,31 @@ export default function MessFeedbackPage() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       {/* Add Feedback Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Add Feedback</h2>
-            <form onSubmit={handleAddFeedback} className="space-y-4">
-              <div>
+        <div className="form-modal-overlay">
+          <div ref={addFeedbackModalRef} className="form-modal-shell sm:max-w-md">
+            <h2 className="form-modal-header text-xl font-bold p-4 sm:p-6 pb-3">Add Feedback</h2>
+            <form onSubmit={handleAddFeedback} className="flex-1 flex flex-col min-h-0">
+              <div className="form-modal-body p-4 sm:p-6 pb-28 sm:pb-24 space-y-4">
+                <div>
                 <label className="block text-sm font-medium mb-1">Meal Type</label>
                 <select
                   value={newFeedback.meal_type}
-                  onChange={(e) => setNewFeedback({...newFeedback, meal_type: e.target.value})}
+                  onChange={(e) => {
+                    const nextMealType = e.target.value;
+                    const defaultSubtype = mealSubtypeOptions[nextMealType]?.[0]?.value || '';
+                    setNewFeedback({
+                      ...newFeedback,
+                      meal_type: nextMealType,
+                      meal_subtype: defaultSubtype,
+                      meal_subtype_custom: '',
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 >
                   <option value="breakfast">Breakfast</option>
@@ -255,6 +364,33 @@ export default function MessFeedbackPage() {
                   <option value="snack">Snack</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Category</label>
+                <select
+                  value={newFeedback.meal_subtype}
+                  onChange={(e) => setNewFeedback({...newFeedback, meal_subtype: e.target.value, meal_subtype_custom: ''})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  {(mealSubtypeOptions[newFeedback.meal_type] || []).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {newFeedback.meal_subtype === 'other' && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Specify Other</label>
+                  <input
+                    type="text"
+                    value={newFeedback.meal_subtype_custom}
+                    onChange={(e) => setNewFeedback({...newFeedback, meal_subtype_custom: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    placeholder="Enter category (e.g., Poha, Upma, Fruit salad)"
+                    required
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-1">Rating</label>
                 <div className="flex items-center gap-2">
@@ -288,7 +424,27 @@ export default function MessFeedbackPage() {
                   placeholder="Share your experience..."
                 />
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div>
+                <label className="block text-sm font-medium mb-1">Images (Optional, max 5)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 5) {
+                      alert('You can upload a maximum of 5 images.');
+                      return;
+                    }
+                    setNewFeedback({ ...newFeedback, images: files });
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+                <p className="mt-1 text-xs text-gray-500">{newFeedback.images.length}/5 selected</p>
+              </div>
+              </div>
+
+              <div className="form-modal-footer p-4 sm:p-6 pb-[max(env(safe-area-inset-bottom),1rem)] flex flex-col sm:flex-row gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
